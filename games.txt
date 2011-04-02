@@ -36,4 +36,97 @@ Kc7 22.Nf6 Nd6 23.exd6+ {+8.17/3 0s} Bxd6 24.h6 *
 
 
 
+[Event ""]
+[Site ""]
+[Date "2011.04.01"]
+[Round ""]
+[White "Shredder"]
+[Black "Eric"]
+[ECO "B07"]
+[Result "*"]
+
+1.e4 {Book} d6 2.d4 {Book} e5 3.dxe5 {Book} dxe5 4.Qxd8+ {Book} 
+Kxd8 5.Bc4 {+0.54/2 0s} Be6 6.Bxe6 {+0.20/2 0s} fxe6 7.Nf3 Bd6 
+8.Be3 {+0.99/2 0s} Nf6 9.Nc3 Nc6 10.Rd1 {+0.76/2 0s} Rc8 11.Ng5 {+1.10/1 0s} 
+Ke7 12.Nb5 {+0.95/1 0s} Ne8 13.Nxa7 {+1.93/2 0s} Nxa7 14.Bxa7 {+1.02/3 0s} 
+Bb4+ 15.c3 {+2.21/2 0s} Ra8 16.Be3 Bd6 17.a3 {+1.66/2 0s} b6 
+18.Ke2 {+1.67/2 0s} h5 19.f3 {+2.34/2 0s} Nf6 20.Rhf1 {+1.93/1 0s} 
+c5 21.c4 {+2.51/2 0s} Bc7 22.h4 {+2.62/1 0s} b5 23.Bxc5+ {+5.05/2 0s} 
+Ke8 24.Nxe6 g6 25.Nxc7+ {+11.20/3 0s} *
+
+
+
+[Event ""]
+[Site ""]
+[Date "2011.04.01"]
+[Round ""]
+[White "Eric"]
+[Black "Shredder"]
+[ECO "A00"]
+[Result "0-1"]
+
+1.d3 {-0.05/13 0s} g6 {+0.09/13 1s} 2.Bf4 {-0.16/14 0s} d6 {-0.09/13 0s} 
+3.d4 {-0.03/13 1s} Nf6 {-0.05/12 1s} 4.Qd3 {-0.45/12 0s} (4.Nc3 {+0.07/11 1s} 
+Bf5 5.f3 Bd7 6.e4 Bg7 7.Bc4 Nc6 8.Nge2 e5 9.dxe5 Nxe5 10.Bxe5 
+dxe5 11.O-O O-O) 4. ... Bg7 {-0.17/11 1s} 5.h3 {-0.79/11 1s} 
+(5.Nc3 {-0.21/12 4s} Nbd7 6.e4 e5 7.Be3 Ng4 8.Nf3 exd4 9.Bg5 
+) 5. ... Nc6 {-0.76/11 0s} 6.Nc3 {-0.38/13 2s} Nh5 {-0.52/12 6s} 
+7.e3 {-1.84/13 2s} (7.Be3 {-0.52/12 2s} Bf5 8.Qd1 Nb4 9.Rc1 Nf6 
+10.Nf3 Be6 11.Bg5 h6 12.Bxf6 Bxf6 13.Ra1 Nd5 14.e4 Nxc3 15.bxc3 
+) 7. ... Nxf4 {-1.88/13 1s} 8.exf4 {-1.77/12 1s} Bf5 {-1.48/12 1s} 
+9.Ne4 {-4.07/13 1s} (9.Qd2 {-1.53/12 3s} Nxd4 10.Bd3 O-O 11.Bxf5 
+Nxf5 12.Nf3 c5 13.O-O Qb6 14.Rab1) 9. ... Bxd4 {-1.70/12 0s} 
+(9. ... d5 {-4.08/12 6s} 10.c3 Bxe4 11.Qe3 Qd6 12.f3 Bc2 13.Kd2 
+Bf5 14.g4 Bd7 15.Re1 O-O-O 16.Kc2 e6 17.Ne2) 10.Qxd4 {-8.52/13 0s} 
+(10.c3 {-1.64/12 2s} d5 11.cxd4 dxe4 12.Qb5 Qd6 13.Bc4 O-O-O 
+14.Ne2 Nxd4 15.Nxd4 Qxd4 16.O-O e3 17.Bxf7 Qxf4) 10. ... Nxd4 {-8.67/12 1s} 
+11.Ne2 {-16.57/10 0s} (11.O-O-O {-8.68/13 2s} Nxc2 12.Ng3 Nb4 
+13.Nxf5 gxf5 14.a3 Na6 15.Nf3 Nc5 16.Bc4 e6 17.Kb1 Qf6 18.Nd4 
+Ke7) 11. ... Nxc2+ {-16.57/11 2s} 12.Kd1 {-16.64/10 0s} (12.Kd2 {-16.52/12 2s} 
+Nxa1 13.N4c3 d5 14.Nd4 Qd6 15.Bb5+ c6 16.Nxf5 Qxf4+ 17.Ke2 cxb5 
+18.Ne3 d4 19.Rxa1 dxc3 20.bxc3 O-O-O) 12. ... Nxa1 {-16.70/11 2s} 
+13.Kd2 {-19.22/10 0s} (13.N4c3 {-16.83/12 4s} d5 14.Nd4 Qd6 15.Nxf5 
+gxf5 16.Bd3 Qxf4 17.Ke2 d4 18.Nb5 Nc2 19.a3 a6 20.Bxc2) 13. ... Bxe4 {-19.20/11 2s} 
+14.Nc1 {-22.01/9 0s} (14.Nc3 {-19.16/13 4s} d5 15.Be2 Qd6 16.Rxa1 
+Qxf4+ 17.Ke1 Bxg2 18.Rd1 c6 19.Rd3 d4 20.Nd1 Qe5 21.a3 c5 22.Rg3 
+Qe4 23.b3) 14. ... e5 {-19.80/10 1s} (14. ... c6 {-22.01/10 3s} 
+15.Bd3 Bxg2 16.Rh2 Qa5+ 17.Ke2 Qd5 18.Ke1 Qf3 19.f5 Qf4 20.Rxg2 
+Qxc1+ 21.Ke2 Qxb2+ 22.Kf1) 15.Ke3 {-22.38/11 0s} (15.f3 {-19.95/11 1s} 
+Bd5 16.Bd3 exf4 17.Ne2 Qg5 18.Rxa1 Qxg2 19.Kc2 Qxf3 20.Nc3 Qf2+ 
+21.Be2 f3 22.Nxd5 fxe2 23.Nxc7+ Kd7) 15. ... Qf6 {-22.39/11 3s} 
+16.Bd3 {-29.00/10 0s} (16.Nd3 {-22.34/11 6s} Bxd3 17.Bxd3 exf4+ 
+18.Kf3 Qxb2 19.h4 Qd2 20.Be4 d5 21.Bb1 Ke7 22.g4 fxg3 23.Kxg3 
+f5 24.Kg2) 16. ... d5 {-24.85/10 1s} (16. ... Bxg2 {-29.24/11 3s} 
+17.f5 Bxh1 18.Nb3 Nxb3 19.axb3 e4 20.Bb5+ Ke7 21.h4 Qxb2 22.f6+ 
+Qxf6) 17.g3 {-32.12/11 1s} (17.Ke2 {-24.63/10 2s} Bxg2 18.Rd1 
+e4 19.Rd2 Qxf4 20.Ke1 exd3 21.Nxd3 Qc4 22.h4 Nc2+ 23.Kd1 Nd4 
+24.b3) 17. ... Bxh1 {-31.81/10 1s} 18.h4 {-M11/10 0s} (18.Bb5+ {-32.12/10 6s} 
+c6 19.Kd2 cxb5 20.Nd3 exf4 21.a4 bxa4 22.Kc1 fxg3 23.fxg3 Rc8+ 
+24.Kb1 Qf1+ 25.Ka2 Qxd3 26.Kxa1 Qxg3) 18. ... exf4+ {-M11/10 1s} 
+19.gxf4 {-34.12/9 0s} Qb6+ {-M10/11 1s} 20.Ke2 {-M9/12 0s} Qxb2+ {-M10/10 0s} 
+21.Kd1 {-M9/12 3s} Qxf2 {-30.69/10 0s} (21. ... Bf3+ {-M9/10 0s} 
+22.Ne2 Qc3 23.Bb1 Qc4 24.Kd2 Qxe2+ 25.Kc3 d4+ 26.Kxd4 Rd8+ 27.Kc5 
+Rd5+ 28.Kb4 Qd2+ 29.Ka3 Ra5#) 22.a3 {-M9/12 1s} (22.Bb5+ {-32.04/11 3s} 
+Ke7 23.Be2 Qd4+ 24.Nd3 Qa4+ 25.Ke1 Nc2+ 26.Kd2 Nd4 27.Kc1) 22. ... c5 {-37.33/11 0s} 
+(22. ... Bf3+ {-M9/12 2s} 23.Be2 Qd4+ 24.Ke1 Nc2+ 25.Kf1 Ne3+ 
+26.Ke1 Qc3+ 27.Kf2 Ng4+ 28.Kg3 Qe1+ 29.Kh3 Qh1+ 30.Kg3 Qg2#) 23.a4 {-M8/13 3s} 
+(23.Be2 {-42.43/12 5s} Qd4+ 24.Nd3 c4 25.f5 cxd3 26.a4) 23. ... Qxf4 {-36.43/10 0s} 
+(23. ... c4 {-M8/12 1s} 24.Be2 Qg1+ 25.Kd2 c3+ 26.Kd3 Be4+ 27.Kxc3 
+Qxc1+ 28.Kd4 Nb3+ 29.Ke5 Qc3+ 30.Kd6 Rd8#) 24.a5 {-40.44/12 1s} 
+(24.Bb5+ {-37.90/12 7s} Ke7 25.Bd3 Bf3+ 26.Be2 Qxa4+ 27.Kd2 Qd4+ 
+28.Ke1 Qxh4+ 29.Kf1 Bxe2+ 30.Nxe2 Nc2) 24. ... Bf3+ {-M11/13 4s} 
+25.Ke1 {-43.57/11 0s} Qxc1+ {-M10/12 2s} 26.Kf2 {-47.62/10 0s} 
+Qd2+ {-M9/12 2s} 27.Kxf3 {-M7/13 2s} (27.Kg3 {-M8/11 4s} Qg2+ 
+28.Kf4 Nc2 29.Bxc2 Qg4+ 30.Ke3 d4+ 31.Kd2 Qf4+ 32.Kd3 Qe3+ 33.Kc4 
+Qc3+ 34.Kb5 Bc6#) 27. ... Qxd3+ {-M11/13 2s} 28.Kg4 {-M3/11 0s} 
+(28.Kg2 {-M13/13 3s} Nb3 29.a6 Qe4+ 30.Kg3 bxa6 31.Kf2 Qxh4+ 
+32.Kg1 Qg3+ 33.Kf1 Qf3+ 34.Kg1 Qh3) 28. ... h5+ {-M4/10 0s} 
+(28. ... Qe3 {-M3/11 1s} 29.h5 f5+ 30.Kh4 g5#) 29.Kf4 {-M3/11 2s} 
+Nc2 {-M3/11 3s} 30.Ke5 {-M2/10 0s} Qd4+ {-M3/10 1s} (30. ... Ke7 {-M2/9 1s} 
+31.a6 Qd4#) 31.Kd6 {-M2/10 0s} Rd8+ {-M3/10 0s} (31. ... Qf6+ {-M2/9 1s} 
+32.Kxd5 Qd4#) 32.Kc7 {-M2/10 0s} f5 {-M3/11 0s} (32. ... Qb4 {-M2/11 2s} 
+33.a6 Qb6#) 33.a6 {-M1/11 1s} (33.Kxb7 {-M2/11 5s} Qf6 34.Kxa7 
+Rh7#) 33. ... Qg7# {-M1/10 0s} 0-1
+
+
 
