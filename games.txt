@@ -1,0 +1,39 @@
+[Event ""]
+[Site ""]
+[Date "2011.04.01"]
+[Round ""]
+[White "Shredder"]
+[Black "Eric"]
+[ECO "A04"]
+[Result "1-0"]
+
+1.Nf3 {+0.28/7 0s} f6 {+0.87/13 1s} (1. ... Nf6 {+0.14/8 0s} 
+2.d4 d5 3.Bf4 Na6 4.e3 Bf5 5.Bd3 Bxd3 6.cxd3) 2.d4 {+0.68/12 2s} 
+Nc6 {+0.94/11 0s} 3.e4 {+1.05/13 4s} e5 {+1.02/13 2s} 4.Bc4 {+1.00/12 2s} 
+Nge7 {+1.57/11 0s} 5.dxe5 {+1.52/11 2s} fxe5 {+1.56/11 1s} 6.Ng5 {+1.42/10 0s} 
+h6 {+M1/20 1s} (6. ... d5 {+1.50/12 2s} 7.exd5 Na5 8.Bd3 Qxd5 
+9.O-O Bf5 10.Nc3 Qd7 11.Bxf5 Qxd1 12.Rxd1 Nxf5 13.Ne6 Bd6 14.Nb5 
+Kf7 15.Nexc7 Bxc7 16.Nxc7) 7.Bf7# {+M1/20 1s} 1-0
+
+
+
+[Event ""]
+[Site ""]
+[Date "2011.04.01"]
+[Round ""]
+[White "Shredder"]
+[Black "Eric"]
+[ECO "A00"]
+[Result "*"]
+
+1.g3 {Book} a5 2.Nc3 {+0.57/2 0s} Ra6 3.e3 {+0.47/2 0s} g5 4.Nf3 {+1.49/2 0s} 
+Nf6 5.Bxa6 {+3.12/3 0s} bxa6 6.h4 {+2.50/2 0s} g4 7.Nd4 e5 8.Nb3 {+1.44/2 0s} 
+Qe7 9.Nxa5 {+1.98/2 0s} Nc6 10.Nxc6 {+2.64/2 0s} dxc6 11.O-O 
+Qb4 12.d4 {+2.60/2 0s} Qc4 13.dxe5 {+3.83/2 0s} Nd5 14.Qd4 Qxd4 
+15.exd4 {+4.35/2 0s} Ne7 16.h5 {+4.36/2 0s} Nf5 17.d5 cxd5 18.Nxd5 {+4.52/3 0s} 
+c6 19.Nf6+ {+5.25/2 0s} Ke7 20.Nxg4 {+5.77/2 0s} Kd8 21.Rd1+ {+6.74/2 0s} 
+Kc7 22.Nf6 Nd6 23.exd6+ {+8.17/3 0s} Bxd6 24.h6 *
+
+
+
+
