@@ -5,11 +5,15 @@ class Move(object):
 		self.sym = sym
 		self.row = row
 		self.col = col
+	def __repr__(self):
+		return self.__str__()
+	def __str__(self):
+		return "<move sym=\""+str(self.sym)+"\" row=\""+str(self.row)+"\" col=\""+str(self.col)+"\" />"
 
 class Board(object):
 	def __init__(self, previous=None):
 		if previous is not None:
-			self.grid = [[previous[i][j] for j in xrange(len(previous[i]))] for i in xrange(len(previous))]
+			self.grid = [[previous.grid[i][j] for j in xrange(len(previous.grid[i]))] for i in xrange(len(previous.grid))]
 		else:
 			self.grid = [[None for j in xrange(3)] for i in xrange(3)]
 	def do_move(self, move):
@@ -65,6 +69,15 @@ class Board(object):
 			t = t[:-1]+"\n"
 		return t[:-1]
 
+def board_iterator(moves):
+	prev = Board()
+	yield prev
+	for move in moves:
+		board = Board(prev) 
+		board.do_move(move)
+		yield board
+		prev = board
+
 def play():
 	print "welcome"
 	moves = []
@@ -97,4 +110,8 @@ def play():
 if __name__ == "__main__":
 	moves = play()
 	print moves
+	for board in board_iterator(moves):
+		print board
+		print ""
+
 
