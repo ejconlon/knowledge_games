@@ -25,6 +25,18 @@ class SatMat(object):
 			grid.append(row)
 		return SatMat(grid)
 
+	@staticmethod
+	def from_mat_string(mat_string):
+		lines = [l.strip() for l in mat_string.split("\n")]
+		grid = []
+		for line in lines:
+			grid.append(line.split(" "))
+		if len(grid) > 0:
+			n = len(grid[0])
+			for i in xrange(1, len(grid)):
+				assert len(grid[i]) == n
+		return SatMat(grid)
+
 	def __init__(self, grid):
 		self.grid = grid
 
@@ -67,12 +79,13 @@ class SatMat(object):
 		row1 = [r for r in row]
 		row1[pos] = "1"
 		if len(stars) == 1:
-			rows.append(row0)
-			rows.append(row1)
+			yield row0
+			yield row1
 		else:
-			rows.extend(self._gen_rows(stars[1:], row0))	
-			rows.extend(self._gen_rows(stars[1:], row1))	
-		return rows
+			for r in self._gen_rows(stars[1:], row0):
+				yield r
+			for r in self._gen_rows(stars[1:], row1):
+				yield r
 
 	def to_sentence_tokens(self, labels):
 		t = []
@@ -98,17 +111,54 @@ class SatMat(object):
 		if self.has_stars() or not self.has_unique_rows():
 			raise Exception("Need to operate on equiv mat")
 		if len(self.grid) == 0:
-			return []
+			return None
 		nvars = len(self.grid[0])
-		if len(self.grid) >= int(2**nvars):
-			return []
+		if len(self.grid) == int(2**nvars):
+			return None
 		else:
-			sats = []
 			poss = self._gen_rows([i for i in xrange(nvars)], ["*" for i in xrange(nvars)])
 			for row in poss:
 				if row not in self.grid:
-					sats.append(row)
-			return sats
+					return row
+	
+	def is_sat_by_counting(self):
+		return self.sat_by_counting() is not None
+
+	def is_sat_by_davis_putnam(self):
+		for row in self.grid:
+			# if empty clause return false
+			if len(row) == 0:
+				return False
+			all_stars = True
+			for t in row:
+				if t != "*":
+					all_stars = False
+			# clause of all stars return false
+			if all_stars:
+				return False
+		# if no clauses return false
+		if len(self.grid) == 0:
+			return True
+
+		# now recurse with assignment
+		if self._assign_and_filter("1").is_sat_by_davis_putnam():
+			return True
+		elif self._assign_and_filter("0").is_sat_by_davis_putnam():
+			return True
+		else:
+			return False
+
+	def _assign_and_filter(self, val):
+		if len(self.grid) == 0 or len(self.grid[0]) == 0:
+			raise Exception("Invalid grid")
+		grid2 = []
+		for row in self.grid:
+			if row[0] == val:
+				continue
+			rowp = [x for x in row[1:]]
+			grid2.append(rowp)	
+		return SatMat(grid2)
+
 
 	def __repr__(self):
 		return self.__str__()
@@ -162,10 +212,16 @@ def test():
 	assert str(equiv) == equiv_mat_string
 	assert not equiv.has_stars()
 	assert equiv.has_unique_rows()
-	sats = equiv.sat_by_counting()
-	print sats
-	assert sats == [["1", "0", "1"]]
+	sat = equiv.sat_by_counting()
+	print sat
+	assert sat == ["1", "0", "1"]
+	assert mat.is_sat_by_davis_putnam()
 
+	non_sat_mat_string = "0 0 *\n* 1 1\n1 1 *\n* 1 0\n1 0 *"
+	nsmat = SatMat.from_mat_string(non_sat_mat_string)
+	print nsmat
+	assert not nsmat.to_equiv_mat().is_sat_by_counting()
+	assert not nsmat.is_sat_by_davis_putnam()
 
 if __name__ == "__main__":
 	test()
