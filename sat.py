@@ -7,7 +7,10 @@ class SatMat(object):
 		disjunctions = tokstr.split("&")
 		grid = []
 		for d in disjunctions:
-			terms = d[1:-1].split("|")
+			if d[0] == "(" and d[-1] == ")": d = d[1:-1]
+			if "(" in d or ")" in d or "&" in d: 
+				raise Exception("INVALID DISJUNCTION: "+d)
+			terms = d.split("|")
 			assert len(terms) <= len(labels)
 			row = ["*" for i in xrange(len(labels))]
 			for t in terms:
@@ -16,12 +19,60 @@ class SatMat(object):
 					val = "0"
 					t = t[1:]
 				pos = labels.index(t)
+				if row[pos] != "*":
+					raise Exception("DUPLICATE VAR: "+terms)
 				row[pos] = val
 			grid.append(row)
 		return SatMat(grid)
 
 	def __init__(self, grid):
 		self.grid = grid
+
+	def has_stars(self):
+		for row in self.grid:
+			for t in row:
+				if t == "*":
+					return True
+		return False
+
+	def has_unique_rows(self):
+		for i in xrange(1, len(self.grid)):
+			row = self.grid[i]
+			if row in self.grid[:i-1]:
+				return False
+		return True
+
+	def to_equiv_mat(self):
+		h = []
+		for row in self.grid:
+			stars = []
+			for i in xrange(len(row)):
+				if row[i] == "*":
+					stars.append(i)
+			if len(stars) == 0:
+				if row not in h:
+					h.append(row)
+			else:
+				rows = self._gen_rows(stars, row)
+				for row in rows:
+					if row not in h:
+						h.append(row)
+		return SatMat(h)
+
+	def _gen_rows(self, stars, row):
+		rows = []
+		pos = stars[0]
+		row0 = [r for r in row]
+		row0[pos] = "0"
+		row1 = [r for r in row]
+		row1[pos] = "1"
+		if len(stars) == 1:
+			rows.append(row0)
+			rows.append(row1)
+		else:
+			rows.extend(self._gen_rows(stars[1:], row0))	
+			rows.extend(self._gen_rows(stars[1:], row1))	
+		return rows
 
 	def to_sentence_tokens(self, labels):
 		t = []
@@ -42,6 +93,22 @@ class SatMat(object):
 		if t[-1] == "&":
 			t = t[:-1]
 		return t
+
+	def sat_by_counting(self):
+		if self.has_stars() or not self.has_unique_rows():
+			raise Exception("Need to operate on equiv mat")
+		if len(self.grid) == 0:
+			return []
+		nvars = len(self.grid[0])
+		if len(self.grid) >= int(2**nvars):
+			return []
+		else:
+			sats = []
+			poss = self._gen_rows([i for i in xrange(nvars)], ["*" for i in xrange(nvars)])
+			for row in poss:
+				if row not in self.grid:
+					sats.append(row)
+			return sats
 
 	def __repr__(self):
 		return self.__str__()
@@ -68,31 +135,10 @@ def tokenize(chars):
 			if len(current) > 0: yield current
 			return
 
-"""
-def is_cnf_simple(tokens):
-	token_iter = iter(tokens)
-	in_paren = True
-	op_stack = []
-	while True:
-		try:
-			t = token_iter.next()
-			if t == "(":
-				if in_paren:
-					return False
-				else:
-					in_paren = True
-			elif t == ")":
-				if not in_paren:
-					return False
-				else:
-					in_paren = False
-			elif t in "~&|"
-		except StopIteration:
-			return not in_paren
-"""
 
 def test():
 	example_mat_string = "0 0 *\n* 1 1\n* 1 0\n1 * 0"
+	equiv_mat_string = "0 0 0\n0 0 1\n0 1 1\n1 1 1\n0 1 0\n1 1 0\n1 0 0"
 
 	example_sen = "(~a | ~b) & (b | c) & (b | ~c) & (a | ~c)"
 	example_tokens = "( ~ a | ~ b ) & ( b | c ) & ( b | ~ c ) & ( a | ~ c )".split(" ")
@@ -108,6 +154,18 @@ def test():
 	mat_tokens = mat.to_sentence_tokens(labels)
 	print mat_tokens
 	assert mat_tokens == tokens
+
+	assert mat.has_stars()
+	assert mat.has_unique_rows()
+	equiv = mat.to_equiv_mat()
+	print equiv
+	assert str(equiv) == equiv_mat_string
+	assert not equiv.has_stars()
+	assert equiv.has_unique_rows()
+	sats = equiv.sat_by_counting()
+	print sats
+	assert sats == [["1", "0", "1"]]
+
 
 if __name__ == "__main__":
 	test()
