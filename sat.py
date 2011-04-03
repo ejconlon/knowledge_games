@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+class Stash(object):
+	def __init__(self):
+		self.stash = []
+	def put(self, obj):
+		self.stash.append(obj)
+class NoOpStash(object):
+	def put(self, obj): pass
+
 class SatMat(object):
 	@staticmethod
 	def from_sentence_tokens(sentence_tokens, labels):
@@ -37,8 +45,32 @@ class SatMat(object):
 				assert len(grid[i]) == n
 		return SatMat(grid)
 
+	@staticmethod
+	def from_dimacs(dimacs):
+		rows = [l.split(" ") for l in dimacs.split("\n")]
+		nvars = 0
+		for row in rows:
+			if row[-1] != "0":
+				raise Exception("No 0: "+row)
+			for elt in row[:-1]:
+				i = abs(int(elt))
+				if i > nvars: nvars = i
+		grid = []
+		for row in rows:
+			grow = ["*" for i in xrange(nvars)]
+			for elt in row[:-1]:
+				i = int(elt)
+				if i > 0:
+					grow[i-1] = "1"
+				else:
+					grow[abs(i)-1] = "0"
+			grid.append(grow)
+		return SatMat(grid)	
+
 	def __init__(self, grid):
 		self.grid = grid
+	def __eq__(self, other):
+		return self.grid == other.grid
 
 	def has_stars(self):
 		for row in self.grid:
@@ -107,6 +139,21 @@ class SatMat(object):
 			t = t[:-1]
 		return t
 
+	def to_dimacs(self):
+		s = ""
+		for row in self.grid:
+			for i in xrange(len(row)):
+				t = row[i]
+				v = str(i+1)
+				if t == "0":
+					v = "-"+v
+				if t != "*":
+					s += v+" "
+			s += "0\n"
+		if len(s) > 0:
+			s = s[:-1]
+		return s
+
 	def sat_by_counting(self):
 		if self.has_stars() or not self.has_unique_rows():
 			raise Exception("Need to operate on equiv mat")
@@ -124,10 +171,13 @@ class SatMat(object):
 	def is_sat_by_counting(self):
 		return self.sat_by_counting() is not None
 
-	def is_sat_by_davis_putnam(self):
+	def is_sat_by_davis_putnam(self, stash=NoOpStash(), labels=None, ass=None):
+		if ass is None: ass = []
+		stash.put(self.grid)
 		for row in self.grid:
 			# if empty clause return false
 			if len(row) == 0:
+				stash.put("EMPTY CLAUSE (ret False)")
 				return False
 			all_stars = True
 			for t in row:
@@ -135,18 +185,26 @@ class SatMat(object):
 					all_stars = False
 			# clause of all stars return false
 			if all_stars:
+				stash.put("ALL STARS (ret False)")
 				return False
 		# if no clauses return false
 		if len(self.grid) == 0:
+			stash.put("NO CLAUSES (ret True)")
 			return True
-
 		# now recurse with assignment
-		if self._assign_and_filter("1").is_sat_by_davis_putnam():
-			return True
-		elif self._assign_and_filter("0").is_sat_by_davis_putnam():
-			return True
-		else:
-			return False
+		for val in "10":
+			sub = self._assign_and_filter(val)
+			labelsp = None 
+			lstr = ""
+			if labels is not None:
+				lstr = " to "+labels[0]
+				labelsp = labels[1:]
+			stash.put("ASSIGNING "+val+lstr)
+			assp = ass+[val]
+			if sub.is_sat_by_davis_putnam(stash, labelsp, assp):
+				stash.put("SATISFYING ASSIGNMENT: "+str(assp))
+				return True
+		return False
 
 	def _assign_and_filter(self, val):
 		if len(self.grid) == 0 or len(self.grid[0]) == 0:
@@ -215,13 +273,26 @@ def test():
 	sat = equiv.sat_by_counting()
 	print sat
 	assert sat == ["1", "0", "1"]
-	assert mat.is_sat_by_davis_putnam()
+	stash1 = Stash()
+	assert mat.is_sat_by_davis_putnam(stash1, labels)
+	for s in stash1.stash: print s
 
 	non_sat_mat_string = "0 0 *\n* 1 1\n1 1 *\n* 1 0\n1 0 *"
 	nsmat = SatMat.from_mat_string(non_sat_mat_string)
 	print nsmat
 	assert not nsmat.to_equiv_mat().is_sat_by_counting()
-	assert not nsmat.is_sat_by_davis_putnam()
+	stash2 = Stash()
+	assert not nsmat.is_sat_by_davis_putnam(stash2, labels)
+	for s in stash2.stash: print s
+
+	dt_mat_string = "1 1 0 *\n* 1 1 1\n1 0 * *\n* * 0 0"
+	dt_dimacs_string = "1 2 -3 0\n2 3 4 0\n1 -2 0\n-3 -4 0"
+	dt_mat = SatMat.from_mat_string(dt_mat_string)
+	dt_dimacs = dt_mat.to_dimacs()
+	print dt_dimacs
+	assert dt_dimacs == dt_dimacs_string
+	dt_mat2 = SatMat.from_dimacs(dt_dimacs)
+	assert dt_mat == dt_mat2
 
 if __name__ == "__main__":
 	test()
