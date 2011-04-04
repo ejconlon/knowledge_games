@@ -1,0 +1,113 @@
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "1/2-1/2"]
+
+1.a1 a3
+2.c2 c3
+3.b3 b1
+4.c1 a2
+5.b2 
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "0-1"]
+
+1.a2 a1
+2.c2 b3
+3.c3 c1
+4.a3 b1
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "1/2-1/2"]
+
+1.b3 a2
+2.c1 b1
+3.b2 a3
+4.c2 c3
+5.a1 
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "1-0"]
+
+1.a3 c3
+2.c1 b1
+3.b3 c2
+4.a1 b2
+5.a2 
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "1-0"]
+
+1.b2 b3
+2.c1 a1
+3.a3 
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "1-0"]
+
+1.b2 a2
+2.c3 c2
+3.b1 c1
+4.a1 
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "1-0"]
+
+1.c1 a1
+2.a3 c2
+3.c3 a2
+4.b3 
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "1-0"]
+
+1.c1 a2
+2.a3 b3
+3.c2 c3
+4.b2 
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "1-0"]
+
+1.b3 b1
+2.c1 c2
+3.b2 a2
+4.c3 a1
+5.a3 
+
+[Event ""]
+[Game "TicTacToe"]
+[White "X"]
+[Black "O"]
+[Result "0-1"]
+
+1.a3 b1
+2.c3 c2
+3.c1 b2
+4.a1 a2
+
