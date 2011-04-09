@@ -158,18 +158,27 @@ class SatMat(object):
 		if self.has_stars() or not self.has_unique_rows():
 			raise Exception("Need to operate on equiv mat")
 		if len(self.grid) == 0:
-			return None
+			return
 		nvars = len(self.grid[0])
 		if len(self.grid) == int(2**nvars):
-			return None
+			return
 		else:
 			poss = self._gen_rows([i for i in xrange(nvars)], ["*" for i in xrange(nvars)])
 			for row in poss:
 				if row not in self.grid:
-					return row
-	
+					yield self.row_not(row)
+
+	def row_not(self, row):
+		r = [x for x in row]
+		for i in xrange(len(r)):
+			if r[i] == "0":
+				r[i] = "1"
+			elif r[i] == "1":
+				r[i] = "0"
+		return r
+
 	def is_sat_by_counting(self):
-		return self.sat_by_counting() is not None
+		return len(list(self.sat_by_counting())) != 0
 
 	def is_sat_by_davis_putnam(self, stash=NoOpStash(), labels=None, ass=None):
 		if ass is None: ass = []
@@ -272,7 +281,7 @@ def test():
 	assert equiv.has_unique_rows()
 	sat = equiv.sat_by_counting()
 	print sat
-	assert sat == ["1", "0", "1"]
+	assert list(sat) == [["0", "1", "0"]]
 	stash1 = Stash()
 	assert mat.is_sat_by_davis_putnam(stash1, labels)
 	for s in stash1.stash: print s
