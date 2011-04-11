@@ -11,7 +11,7 @@ class Board(object):
         self.grid = grid
     def result(self, who, move):
         raise Exception("SUBCLASS")
-    def is_valid_move(self, move):
+    def is_valid_move(self, who, move):
         raise Exception("SUBCLASS")
     def who_won(self):
         raise Exception("SUBCLASS")
@@ -43,7 +43,7 @@ def play(agents, board):
         print "It's "+str(agent)+"'s turn"
         print board
         move = agent.get_move(board)
-        if not board.is_valid_move(move):
+        if not board.is_valid_move(agent.name, move):
             print "Invalid move"
         else:
             moves.append(move)
@@ -60,4 +60,4 @@ def play(agents, board):
     else:
         print winner+" won!"
 
-    return moves, winner
+    return board, moves, winner
