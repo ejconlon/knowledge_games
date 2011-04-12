@@ -2,55 +2,49 @@
 
 import re
 move_regex = re.compile("[0-9]+\.")
+game_result_regex = re.compile("[0-9]+-[0-9]+")
 
-class Game(object):
+class PGNGame(object):
 	def __init__(self):
 		self.metas = {}
 		self.move_parsers = []
 	def __repr__(self):
 		return self.__str__()
 	def __str__(self):
-		s = "<game "
+		s = "<pgngame "
 		for k, v in self.metas.iteritems():
 			s += str(k) + '="' + str(v) + '" '
 		if len(self.move_parsers) > 0:
 			s += ">\n"
 			for move_parser in self.move_parsers:
 				s += str(move_parser)+"\n"
-			s += "</game>"
+			s += "</pgngame>"
 		else:
 			s += "/>"
 		return s
 
-class MoveParser(object):
+class BasePGNMoveParser(object):
 	def __init__(self, tokens):
 		self.tokens = tokens
 
-	def parse_move(self):
-		move = Move()
-		token_iter = iter(self.tokens)
-		raise Exception("TODO")
-		return move
-	move = property(parse_move)
+	def parse_moves(self, context):
+		raise Exception("OVERRIDE")
 
 	def __repr__(self):
 		return self.__str__()
 	def __str__(self):
-		s = "<move_parser "
+		s = "<pgnmoveparser "
 		s += 'tokens="'+" ".join(self.tokens)+'" '
 		s += '/>'
 		return s
 
-class Move(object): 
-	def __init__(self):
-		pass
-
-class GameParser(object):
-	def __init__(self, tokens):
+class PGNGameParser(object):
+	def __init__(self, tokens, move_parser_class):
 		self.tokens = tokens
+		self.move_parser_class = move_parser_class
 
 	def parse_game(self):
-		game = Game()
+		game = PGNGame()
 		token_iter = iter(self.tokens)
 		while True:
 			try:
@@ -65,7 +59,7 @@ class GameParser(object):
 					game.metas[key] = value
 				elif is_move_start(token):
 					token_iter, move_tokens = before_next_predicated(token_iter, is_move_start)
-					move_parser = MoveParser([token] + move_tokens) 
+					move_parser = self.move_parser_class([token] + move_tokens)
 					game.move_parsers.append(move_parser)
 				else:
 					print "NOT MATCHED: "+token
@@ -76,6 +70,8 @@ class GameParser(object):
 
 def is_move_start(token):
 	return None != move_regex.match(token)
+def is_game_result(token):
+    return "*" == token or None != game_result_regex.match(token)
 
 def before_next_predicated(token_iter, predicate):
 	sub_tokens = []
@@ -153,7 +149,7 @@ if __name__ == "__main__":
 	game_chars = split_games(chars)
 	for chars in game_chars:
 		tokens = tokenize(chars)
-		game_parser = GameParser(tokens)
+		game_parser = PGNGameParser(tokens, BasePGNMoveParser)
 		game = game_parser.game
 		print game
 
