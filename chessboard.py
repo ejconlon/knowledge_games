@@ -26,6 +26,16 @@ class ChessConstants:
     BLACK = "B"
     COLORS = [WHITE, BLACK]
     PAWN_DIRECTION = {WHITE: -1, BLACK: 1}
+    PAWN = "p"
+    ROOK = "R"
+    KNIGHT = "N"
+    BISHOP = "B"
+    QUEEN = "Q"
+    KING = "K"
+    PIECE_ABBRS = [PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING]
+    PIECE_CLASSES = {} # filled below class definitions
+    COLS = "abcdefgh"
+    ROWS = "12345678"
 
 def sgn(num):
     if num == 0: return 0
@@ -48,7 +58,7 @@ class Piece(object):
 class Pawn(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
-        self.abbr = "p"
+        self.abbr = ChessConstants.PAWN
     def is_valid_move(self, move, grid):
         delta = grid.delta(move)
         target_piece = grid.get_end(move)
@@ -75,7 +85,7 @@ class Pawn(Piece):
 class Rook(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
-        self.abbr = "R"
+        self.abbr = ChessConstants.ROOK
     def is_valid_move(self, move, grid):
         delta = grid.delta(move)
         if abs(delta['col']) != 0 and abs(delta['row']) != 0:
@@ -89,7 +99,7 @@ class Rook(Piece):
 class Knight(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
-        self.abbr = "N"
+        self.abbr = ChessConstants.KNIGHT
     def is_valid_move(self, move, grid):
         delta = grid.delta(move)
         jumps = [abs(x) for x in delta.values()]
@@ -102,7 +112,7 @@ class Knight(Piece):
 class Bishop(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
-        self.abbr = "B"
+        self.abbr = ChessConstants.BISHOP
     def is_valid_move(self, move, grid):
         delta = grid.delta(move)
         if abs(delta['row']) != abs(delta['col']):
@@ -116,7 +126,7 @@ class Bishop(Piece):
 class Queen(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
-        self.abbr = "Q"
+        self.abbr = ChessConstants.QUEEN
     def is_valid_move(self, move, grid):
         delta = grid.delta(move)
         if not grid.clear_path(move):
@@ -135,19 +145,31 @@ class Queen(Piece):
 class King(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
-        self.abbr = "K"
+        self.abbr = ChessConstants.KING
     def is_valid_move(self, move, grid):
+        delta = grid.delta(move)
         jumps = [abs(x) for x in delta.values()]
         jumps.sort()
+        log.debug("KING JUMPS", jumps)
         # WHITE LISTING
         if (False):
             # CASTLE
             log.debug("Castling", move, grid)
             return True
-        elif (jumps[0] == 0 or jumps[0] == 1) and jumps[1] != 1:
+        elif (jumps[0] == 0 or jumps[0] == 1) and jumps[1] == 1:
             log.debug("King moving max 2 taxi-cab", move, grid)
             return True
         return False
+
+# Circular dependency but whatever
+ChessConstants.PIECE_CLASSES = {
+    ChessConstants.PAWN: Pawn,
+    ChessConstants.ROOK: Rook,
+    ChessConstants.KNIGHT: Knight,
+    ChessConstants.BISHOP: Bishop,
+    ChessConstants.QUEEN: Queen,
+    ChessConstants.KING: King
+}
 
 class ChessMove(base.Move):
     def __init__(self, start_col, start_row, end_col, end_row):
@@ -185,17 +207,48 @@ class ChessGrid(object):
         arow_end, acol_end = self._arow_acol(row=move.end_row, col=move.end_col)
         return {'row': (arow_end-arow_start), 'col': (acol_end-acol_start)}
     def makes_sense(self, move):
-        return (move.start_col in "abcdefgh" and
-                move.start_row in "12345678" and
-                move.end_col   in "abcdefgh" and
-                move.end_row   in "12345678")
+        return (move.start_col in ChessConstants.COLS and
+                move.start_row in ChessConstants.ROWS and
+                move.end_col   in ChessConstants.COLS and
+                move.end_row   in ChessConstants.ROWS)
     def clear_path(self, move):
+        log.debug("is clear path?", move)
         return True # TODO
+    def matching(self, who, piece_abbr, piece_col, piece_row, end_col, end_row):
+        log.debug("MATCHING", who, piece_abbr, piece_col, piece_row)
+        start_col = None
+        start_row = None
+        moving_piece = None
+        for col in ChessConstants.COLS:
+            if piece_col is not None and col != piece_col:
+                continue
+            for row in ChessConstants.ROWS:
+                if piece_row is not None and row != piece_row:
+                    break
+                piece = self.get(col=col, row=row)
+                if piece is None:
+                    continue
+                elif piece.color != who:
+                    continue
+                elif piece.abbr != piece_abbr:
+                    continue
+                elif not piece.is_valid_move(ChessMove(col, row, end_col, end_row), self):
+                    continue
+                else:
+                    start_col = col
+                    start_row = row
+                    moving_piece = piece
+                    break
+            if moving_piece is not None:
+                break
+        log.debug("Found", moving_piece, start_col, start_row)
+        return moving_piece, start_col, start_row
+
     @classmethod
     def empty(cls):
         array = [[None for i in xrange(8)] for j in xrange(8)]
         grid = ChessGrid(array)
-        for col in "abcdefgh":
+        for col in ChessConstants.COLS:
             grid.set("7", col, Pawn(ChessConstants.BLACK))
             grid.set("2", col, Pawn(ChessConstants.WHITE))
         for col in "ah":
@@ -220,9 +273,9 @@ class ChessGrid(object):
     def __str__(self):
         t = "  | a| b| c| d| e| f| g| h|\n"
         t +="---------------------------\n"
-        for row in "87654321":
+        for row in reversed(ChessConstants.ROWS):
             t += " "+row+"|"
-            for col in "abcdefgh":
+            for col in ChessConstants.COLS:
                 s = "  "
                 p = self.get(row, col)
                 if p is not None:
@@ -231,9 +284,50 @@ class ChessGrid(object):
             t += "\n"
             t +="---------------------------\n"
         return t[:-1]
-    def disambiguate(self, who, token):
-        log.debug("DISAMBIGUATING", who, token)
-        return None # PASS
+    def disambiguate(self, who, token, grid):
+        log.debug("DISAMBIGUATING", who, token, grid)
+        check=False
+        mate=False
+        if token[-1] == "+":
+            check = True
+            token = token[:-1]
+        elif token[-1] == "#":
+            mate = True
+            token = token[:-1]
+        end_col = token[-2]
+        end_row = token[-1]
+        token = token[:-2]
+        piece_col = None
+        piece_row = None
+        piece_abbr = None
+        if len(token) > 0:
+            piece_abbr = token[0]
+            if piece_abbr.upper() != piece_abbr:
+                # is a pawn col
+                piece_abbr = "p"
+                piece_col = token[0]
+            token = token[1:]
+        else:
+            piece_abbr = "p"
+        if len(token) > 0:
+            piece_col = token[0]
+            if piece_col == "x":
+                piece_col = None
+            token = token[1:]
+        if len(token) > 0:
+            piece_row = token[0]
+            if piece_row == "x":
+                piece_row = None
+            token = token[1:]
+
+        moving_piece, start_col, start_row = grid.matching(who, piece_abbr, piece_col, piece_row, end_col, end_row)
+
+        assert start_col is not None
+        assert start_row is not None
+        assert moving_piece is not None
+        move = ChessMove(start_col, start_row, end_col, end_row)
+        log.debug("Found move", move)
+        return move
 
 
 class ChessBoard(base.Board):
@@ -299,9 +393,9 @@ class ChessPlayerAgent(base.Agent):
         pass
 
     def get_move(self, board):
-        start_col = raw_input("Choose start col (a-g): ")
+        start_col = raw_input("Choose start col (a-h): ")
         start_row = raw_input("Choose start row (1-8): ")
-        end_col = raw_input("Choose end col (a-g): ")
+        end_col = raw_input("Choose end col (a-h): ")
         end_row = raw_input("Choose end row (1-8): ")
         return ChessMove(start_col, start_row, end_col, end_row)
 
@@ -339,9 +433,9 @@ class ChessPGNMoveParser(parse.BasePGNMoveParser):
                 second = None
 
         if first is not None:
-            yield grid.disambiguate(ChessConstants.WHITE, first)
+            grid = yield grid.disambiguate(ChessConstants.WHITE, first, grid)
         if second is not None:
-            yield grid.disambiguate(ChessConstants.BLACK, second)
+            yield grid.disambiguate(ChessConstants.BLACK, second, grid)
 
 
 
@@ -358,12 +452,27 @@ if __name__ == "__main__":
             chars = f.read()
         game_chars = parse.split_games(chars)
         for chars in game_chars:
+            print "NEW GAME"
             tokens = parse.tokenize(chars)
             game_parser = parse.PGNGameParser(tokens, ChessPGNMoveParser)
             game = game_parser.game
-            grid = ChessGrid.empty()
+            board = ChessBoard.empty()
+            print board
+            turn = 0
             for move_parser in game.move_parsers:
-                print list(move_parser.parse_moves(grid))
-                # apply moves
-                # assign grid
+                it = move_parser.parse_moves(board.grid)
+                first = True
+                while True:
+                    try:
+                        if first:
+                            move = it.next()
+                            first = False
+                        else:
+                            move = it.send(board.grid)
+                        board = board.result(ChessConstants.COLORS[turn], move)
+                        print board
+                        turn = (turn + 1) % 2
+                    except StopIteration:
+                        break
+                r = raw_input("ok?")
 
