@@ -349,6 +349,7 @@ class ChessGrid(object):
             t +="---------------------------\n"
         return t[:-1]
     def disambiguate(self, who, token, grid):
+        orig_token = token
         promotion = None
         log.debug("DISAMBIGUATING", who, token, grid)
         if token == ChessConstants.KING_SIDE_CASTLE or token == ChessConstants.QUEEN_SIDE_CASTLE:
@@ -385,7 +386,7 @@ class ChessGrid(object):
                 token = token[1:]
             else:
                 piece_abbr = "p"
-            if len(token) > 0:
+            if len(token) > 0 and piece_col is None:
                 piece_col = token[0]
                 if piece_col == "x":
                     piece_col = None
@@ -550,9 +551,10 @@ if __name__ == "__main__":
                             move = it.send(board.grid)
                         who = ChessConstants.COLORS[turn]
                         print who
-                        trans_moves = board.translate_move(who, move)
                         print move
+                        trans_moves = board.translate_move(who, move)
                         print trans_moves
+                        assert len(trans_moves) > 0
                         for move in trans_moves:
                             board = board.result(who, move)
                             print board
