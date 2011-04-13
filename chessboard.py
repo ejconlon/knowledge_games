@@ -36,6 +36,8 @@ class ChessConstants:
     PIECE_CLASSES = {} # filled below class definitions
     COLS = "abcdefgh"
     ROWS = "12345678"
+    KING_SIDE_CASTLE="O-O"
+    QUEEN_SIDE_CASTLE="O-O-O"
 
 def sgn(num):
     if num == 0: return 0
@@ -47,7 +49,7 @@ class Piece(object):
         self.color = color
         self.moved = False
         self.abbr = None
-    def is_valid_move(self, move, grid):
+    def translate_move(self, move, grid):
         raise Exception("OVERRIDE")
     def __repr__(self):
         return self.__str__()
@@ -59,107 +61,130 @@ class Pawn(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.PAWN
-    def is_valid_move(self, move, grid):
+    def translate_move(self, move, grid):
+        # TODO PROMOTION AND EN PASSANT
         delta = grid.delta(move)
         target_piece = grid.get_end(move)
         if abs(delta['col']) > 1:
             log.warn("Pawn cannot move more than 1 column", move, grid)
-            return False
+            return []
         elif sgn(delta['row']) != ChessConstants.PAWN_DIRECTION[self.color]:
             log.warn("Must move forward", move, grid)
-            return False
+            return []
         elif delta['col'] != 0 and target_piece is None:
             log.warn("Cannot move to adjacent column w/o capture", move, grid)
-            return False
+            return []
         elif delta['col'] == 0 and target_piece is not None:
             log.warn("Cannot capture piece in same column", move, grid)
-            return False
+            return []
         elif abs(delta['row']) > 2:
             log.warn("Can never move more than two", move, grid)
-            return False
+            return []
         elif abs(delta['row']) == 2 and self.moved:
             log.warn("Can only move 2 on first move", move, grid)
-            return False
-        return True
+            return []
+        return [move]
 
 class Rook(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.ROOK
-    def is_valid_move(self, move, grid):
+    def translate_move(self, move, grid):
         delta = grid.delta(move)
         if abs(delta['col']) != 0 and abs(delta['row']) != 0:
             log.warn("Can only move in one file", move, grid)
-            return False
+            return []
         elif not grid.clear_path(move):
             log.warn("Not clear path", move, grid)
-            return False
-        return True
+            return []
+        return [move]
 
 class Knight(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.KNIGHT
-    def is_valid_move(self, move, grid):
+    def translate_move(self, move, grid):
         delta = grid.delta(move)
         jumps = [abs(x) for x in delta.values()]
         jumps.sort()
         if jumps[0] != 1 or jumps[1] != 2:
             log.warn("Must move taxi-cab distance of 3 by (1,2)", move, grid)
-            return False
-        return True
+            return []
+        return [move]
 
 class Bishop(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.BISHOP
-    def is_valid_move(self, move, grid):
+    def translate_move(self, move, grid):
         delta = grid.delta(move)
         if abs(delta['row']) != abs(delta['col']):
             log.warn("Must move diagonally", move, grid)
-            return False
+            return []
         elif not grid.clear_path(move):
             log.warn("Not clear path", move, grid)
-            return False
-        return True
+            return []
+        return [move]
 
 class Queen(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.QUEEN
-    def is_valid_move(self, move, grid):
+    def translate_move(self, move, grid):
         delta = grid.delta(move)
         if not grid.clear_path(move):
             log.warn("Not clear path", move, grid)
-            return False
+            return []
 
         # WHITE LISTING
         if abs(delta['row']) == abs(delta['col']):
             log.debug("Moving Queen like Bishop")
-            return True
+            return [move]
         elif abs(delta['row']) == 0 or abs(delta['col']) == 0:
             log.debug("Moving Queen like Rook")
-            return True
-        return False
+            return [move]
+        return []
 
 class King(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.KING
-    def is_valid_move(self, move, grid):
+    def _get_rook(self, delta, grid):
+        if self.color == ChessConstants.WHITE:
+            if sgn(delta['col']) > 0:
+                # king castle
+                return grid.get(col='h', row='1'), 'h', '1'
+            else:
+                return grid.get(col='a', row='1'), 'a', '1'
+        else:
+            if sgn(delta['col']) > 0:
+                return grid.get(col='h', row='8'), 'h', '8'
+            else:
+                return grid.get(col='a', row='8'), 'a', '8'
+    def translate_move(self, move, grid):
         delta = grid.delta(move)
         jumps = [abs(x) for x in delta.values()]
         jumps.sort()
         log.debug("KING JUMPS", jumps)
         # WHITE LISTING
-        if (False):
-            # CASTLE
-            log.debug("Castling", move, grid)
-            return True
+        if delta['row'] == 0 and abs(delta['col']) == 2\
+            and not self.moved:
+            log.debug("Castling?", move, grid)
+            # castle - check for rook movement
+            rook, rook_col, rook_row = self._get_rook(delta, grid)
+            if rook is None or rook.moved:
+                log.debug("king rook gone or moved")
+                return []
+            else:
+                arow, acol = grid._arow_acol(move.start_row, move.start_col)
+                acol += sgn(delta['col'])
+                end_row, end_col = grid._row_col(arow, acol)
+                rook_move = ChessMove(rook_col, rook_row, end_col, end_row)
+                return [move, rook_move]
         elif (jumps[0] == 0 or jumps[0] == 1) and jumps[1] == 1:
             log.debug("King moving max 2 taxi-cab", move, grid)
-            return True
-        return False
+            return [move]
+        return []
 
 # Circular dependency but whatever
 ChessConstants.PIECE_CLASSES = {
@@ -185,9 +210,15 @@ class ChessGrid(object):
     def __init__(self, array):
         self.array = array
     def _arow_acol(self, row, col):
+        # a_rray row, a_rray col - actual indices, ints
         arow = 8 - int(row)
-        acol = "abcdefgh".index(col)
+        acol = ChessConstants.COLS.index(col)
         return arow, acol
+    def _row_col(self, arow, acol):
+        # these are strings
+        row = str(8-arow)
+        col = ChessConstants.COLS[acol]
+        return row, col
     def get(self, row, col):
         arow, acol = self._arow_acol(row, col)
         return self.array[arow][acol]
@@ -213,7 +244,32 @@ class ChessGrid(object):
                 move.end_row   in ChessConstants.ROWS)
     def clear_path(self, move):
         log.debug("is clear path?", move)
-        return True # TODO
+        delta = self.delta(move)
+        if delta['row'] == 0:
+            arow, acol = self._arow_acol(row=move.start_row, col=move.start_col)
+            for i in (sgn(delta['col'])*j for j in xrange(1, abs(delta['col'])-1)):
+                row, col = self._row_col(arow, acol+i)
+                if self.get(row, col) is not None:
+                    log.debug("Found piece at "+row+" "+col)
+                    return False
+        elif delta['col'] == 0:
+            arow, acol = self._arow_acol(row=move.start_row, col=move.start_col)
+            for i in (sgn(delta['row'])*j for j in xrange(1, abs(delta['row'])-1)):
+                row, col = self._row_col(arow+i, acol)
+                if self.get(row, col) is not None:
+                    log.debug("Found piece at "+row+" "+col)
+                    return False
+        else:
+            if abs(delta['row']) != abs(delta['col']):
+                return False
+            arow, acol = self._arow_acol(row=move.start_row, col=move.start_col)
+            for i in (j for j in xrange(1, abs(delta['row'])-1)):
+                row, col = self._row_col(arow+sgn(delta['row'])*i, acol+sgn(delta['col'])*i)
+                if self.get(row, col) is not None:
+                    log.debug("Found piece at "+row+" "+col)
+                    return False
+        return True
+
     def matching(self, who, piece_abbr, piece_col, piece_row, end_col, end_row):
         log.debug("MATCHING", who, piece_abbr, piece_col, piece_row)
         start_col = None
@@ -232,7 +288,11 @@ class ChessGrid(object):
                     continue
                 elif piece.abbr != piece_abbr:
                     continue
-                elif not piece.is_valid_move(ChessMove(col, row, end_col, end_row), self):
+                elif col is not None and \
+                     row is not None and \
+                     end_col is not None and \
+                     end_row is not None and \
+                     len(piece.translate_move(ChessMove(col, row, end_col, end_row), self)) == 0:
                     continue
                 else:
                     start_col = col
@@ -285,42 +345,52 @@ class ChessGrid(object):
             t +="---------------------------\n"
         return t[:-1]
     def disambiguate(self, who, token, grid):
+        # TODO promotion
         log.debug("DISAMBIGUATING", who, token, grid)
-        check=False
-        mate=False
-        if token[-1] == "+":
-            check = True
-            token = token[:-1]
-        elif token[-1] == "#":
-            mate = True
-            token = token[:-1]
-        end_col = token[-2]
-        end_row = token[-1]
-        token = token[:-2]
-        piece_col = None
-        piece_row = None
-        piece_abbr = None
-        if len(token) > 0:
-            piece_abbr = token[0]
-            if piece_abbr.upper() != piece_abbr:
-                # is a pawn col
-                piece_abbr = "p"
-                piece_col = token[0]
-            token = token[1:]
+        if token == ChessConstants.KING_SIDE_CASTLE or token == ChessConstants.QUEEN_SIDE_CASTLE:
+            moving_piece, start_col, start_row = grid.matching(who, "K", None, None, None, None)
+            if token == ChessConstants.KING_SIDE_CASTLE:
+                end_col = 'g'
+            else:
+                end_col = 'c'
+            end_row = start_row
         else:
-            piece_abbr = "p"
-        if len(token) > 0:
-            piece_col = token[0]
-            if piece_col == "x":
-                piece_col = None
-            token = token[1:]
-        if len(token) > 0:
-            piece_row = token[0]
-            if piece_row == "x":
-                piece_row = None
-            token = token[1:]
+            check=False
+            mate=False
+            if token[-1] == "+":
+                check = True
+                token = token[:-1]
+            elif token[-1] == "#":
+                mate = True
+                token = token[:-1]
+            end_col = token[-2]
+            end_row = token[-1]
+            token = token[:-2]
+            piece_col = None
+            piece_row = None
+            piece_abbr = None
 
-        moving_piece, start_col, start_row = grid.matching(who, piece_abbr, piece_col, piece_row, end_col, end_row)
+            if len(token) > 0:
+                piece_abbr = token[0]
+                if piece_abbr.upper() != piece_abbr:
+                    # is a pawn col
+                    piece_abbr = "p"
+                    piece_col = token[0]
+                token = token[1:]
+            else:
+                piece_abbr = "p"
+            if len(token) > 0:
+                piece_col = token[0]
+                if piece_col == "x":
+                    piece_col = None
+                token = token[1:]
+            if len(token) > 0:
+                piece_row = token[0]
+                if piece_row == "x":
+                    piece_row = None
+                token = token[1:]
+
+            moving_piece, start_col, start_row = grid.matching(who, piece_abbr, piece_col, piece_row, end_col, end_row)
 
         assert start_col is not None
         assert start_row is not None
@@ -334,7 +404,7 @@ class ChessBoard(base.Board):
     def __init__(self, grid):
         self.grid = grid
         self.lost = {ChessConstants.WHITE: [],
-                ChessConstants.BLACK: []}
+                     ChessConstants.BLACK: []}
 
     @classmethod
     def empty(cls):
@@ -350,7 +420,7 @@ class ChessBoard(base.Board):
     def who_won(self):
         return None # TODO
 
-    def is_valid_move(self, who, move):
+    def translate_move(self, who, move):
         if not self.grid.makes_sense(move):
             log.warn("Does not make sense", move)
             return False
@@ -358,18 +428,18 @@ class ChessBoard(base.Board):
         target_piece = self.grid.get_end(move)
         if moving_piece is None:
             log.warn("No piece to move", move, self.grid)
-            return False
+            return []
         elif moving_piece.color != who:
             log.warn("Not right color", who, moving_piece, move)
-            return False
+            return []
         elif moving_piece == target_piece:
             log.warn("Cannot no-op", who, moving_piece, move)
-            return False
+            return []
         elif target_piece is not None and moving_piece.color == target_piece.color:
             log.warn("Cannot capture own piece", who, moving_piece, target_piece, move)
-            return False
+            return []
         else:
-            return moving_piece.is_valid_move(move, self.grid)
+            return moving_piece.translate_move(move, self.grid)
 
     def valid_moves(self):
         return [] # TODO
@@ -469,10 +539,17 @@ if __name__ == "__main__":
                             first = False
                         else:
                             move = it.send(board.grid)
-                        board = board.result(ChessConstants.COLORS[turn], move)
-                        print board
+                        who = ChessConstants.COLORS[turn]
+                        trans_moves = board.translate_move(who, move)
+                        print who
+                        print move
+                        print trans_moves
+                        for move in trans_moves:
+                            board = board.result(ChessConstants.COLORS[turn], move)
+                            print board
+                            r = raw_input("ok?")
                         turn = (turn + 1) % 2
                     except StopIteration:
                         break
-                r = raw_input("ok?")
+
 

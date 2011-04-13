@@ -26,8 +26,11 @@ class TTTBoard(base.Board):
         return TTTBoard(grid)
     def is_valid_row_col(self, row, col):
         return row >= 0 and row < 3 and col >= 0 and col < 3 and self.grid[row][col] is None
-    def is_valid_move(self, who, move):
-        return self.is_valid_row_col(move.row, move.col)
+    def translate_move(self, who, move):
+        if self.is_valid_row_col(move.row, move.col):
+            return [move]
+        else:
+            return []
     def who_won(self):
         # CHECK ROWS
         for i in xrange(3):
@@ -109,7 +112,7 @@ class RandomAgent(base.Agent):
             row = random.randint(0,2)
             col = random.randint(0,2)
             move = TTTMove(row, col)
-            valid = board.is_valid_move(self.name, move)
+            valid = board.is_valid_row_col(row, col)
         return move
     def send_move(self, move, board): pass
 
