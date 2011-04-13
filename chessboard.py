@@ -33,7 +33,6 @@ class ChessConstants:
     QUEEN = "Q"
     KING = "K"
     PIECE_ABBRS = [PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING]
-    PIECE_CLASSES = {} # filled below class definitions
     COLS = "abcdefgh"
     ROWS = "12345678"
     KING_SIDE_CASTLE="O-O"
@@ -186,22 +185,27 @@ class King(Piece):
             return [move]
         return []
 
-# Circular dependency but whatever
-ChessConstants.PIECE_CLASSES = {
-    ChessConstants.PAWN: Pawn,
-    ChessConstants.ROOK: Rook,
-    ChessConstants.KNIGHT: Knight,
-    ChessConstants.BISHOP: Bishop,
-    ChessConstants.QUEEN: Queen,
-    ChessConstants.KING: King
-}
+class PieceFactory(object):
+    PIECE_CLASSES = {
+        ChessConstants.PAWN: Pawn,
+        ChessConstants.ROOK: Rook,
+        ChessConstants.KNIGHT: Knight,
+        ChessConstants.BISHOP: Bishop,
+        ChessConstants.QUEEN: Queen,
+        ChessConstants.KING: King
+    }
+
+    @staticmethod
+    def new_piece(color, abbr):
+        return PieceFactory.PIECE_CLASSES[abbr](color)
 
 class ChessMove(base.Move):
-    def __init__(self, start_col, start_row, end_col, end_row):
+    def __init__(self, start_col, start_row, end_col, end_row, promotion=None):
         self.start_col = start_col
         self.start_row = start_row
         self.end_col = end_col
         self.end_row = end_row
+        self.promotion = promotion
     def __str__(self):
         return '<move start="%s%s" end="%s%s" />' % \
                 (self.start_col, self.start_row, self.end_col, self.end_row)
@@ -345,7 +349,7 @@ class ChessGrid(object):
             t +="---------------------------\n"
         return t[:-1]
     def disambiguate(self, who, token, grid):
-        # TODO promotion
+        promotion = None
         log.debug("DISAMBIGUATING", who, token, grid)
         if token == ChessConstants.KING_SIDE_CASTLE or token == ChessConstants.QUEEN_SIDE_CASTLE:
             moving_piece, start_col, start_row = grid.matching(who, "K", None, None, None, None)
@@ -363,6 +367,8 @@ class ChessGrid(object):
             elif token[-1] == "#":
                 mate = True
                 token = token[:-1]
+            if "=" in token:
+                token, promotion = token.split('=')
             end_col = token[-2]
             end_row = token[-1]
             token = token[:-2]
@@ -395,7 +401,7 @@ class ChessGrid(object):
         assert start_col is not None
         assert start_row is not None
         assert moving_piece is not None
-        move = ChessMove(start_col, start_row, end_col, end_row)
+        move = ChessMove(start_col, start_row, end_col, end_row, promotion)
         log.debug("Found move", move)
         return move
 
@@ -453,6 +459,8 @@ class ChessBoard(base.Board):
         if target_piece is not None:
             log.info("Losing piece", target_piece)
             board.lost[target_piece.color].append(target_piece)
+        if move.promotion is not None:
+            moving_piece = PieceFactory.new_piece(who, move.promotion)
         board.grid.set_end(move, moving_piece)
         moving_piece.moved = True
         return board
@@ -530,6 +538,7 @@ if __name__ == "__main__":
             print board
             turn = 0
             for move_parser in game.move_parsers:
+                print move_parser
                 it = move_parser.parse_moves(board.grid)
                 first = True
                 while True:
@@ -540,14 +549,14 @@ if __name__ == "__main__":
                         else:
                             move = it.send(board.grid)
                         who = ChessConstants.COLORS[turn]
-                        trans_moves = board.translate_move(who, move)
                         print who
+                        trans_moves = board.translate_move(who, move)
                         print move
                         print trans_moves
                         for move in trans_moves:
-                            board = board.result(ChessConstants.COLORS[turn], move)
+                            board = board.result(who, move)
                             print board
-                            r = raw_input("ok?")
+                            #r = raw_input("ok?")
                         turn = (turn + 1) % 2
                     except StopIteration:
                         break
