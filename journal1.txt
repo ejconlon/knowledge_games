@@ -1,0 +1,1527 @@
+Eric Conlon
+CMPS 241 Spring 11
+Chess Journal 1
+4/16/2011
+
+THIS FILE IS AVAILABLE AT
+https://github.com/ejconlon/knowledge_games/raw/master/journal1.txt
+
+Contents:
+- My skill development
+- My chess engine goal + progress
+
+My skill development
+--------------------
+
+My initial matches against Shredder went very poorly.  Under time pressure I tend to make very silly moves, like blindly moving a piece unprotected onto a bishop's diagonal, and so on.  I have a lot of work to go in preparing my mental checklist for every move and making sure I stick to it: Is this piece protected?  What holes am I opening up?  Am I blocking other pieces from leaving the back rank?  Where do I need to be to counter the opponent?  These are very fundamental things I have been working on.  I've been playing blitz a quarter of the time, tactics on chesstempo.com another quarter, and long-form chess for the rest of it.  The "J'adoube" button is a great learning tool because I can try something crazy and if it fails, simply back out of that state. Observations:
+
+- Pawn openings: I have never won a Rook pawn opening game.  I really want to.  I generally open with King or Queen pawn, pull two pieces (Bishop, Queen, or Knight) out to the wings, and create a diagonal pawn front on one side.
+- Endgame: I am woefully bad at ending games; so much so that I frequently checkmate purely by accident.  In particular, I need to study how to avoid a stalemate when I'm chasing down the king.	
+
+I can't discuss chess theory in depth yet, as I'm still warming up, so perhaps it would be best to examine a game I saved.  This would also give me the opportunity to demonstrate the game runner, parser, and replayer I have cobbled together.  Here's an example game:
+
+[Event "Best game yet 718 vs 850 w 1m remaining"]
+[Site ""]
+[Date "2011.04.03"]
+[Round ""]
+[White "Shredder"]
+[Black "Eric"]
+[ECO "A20"]
+[Result "0-1"]
+
+1.c4 {Book} e5 2.g3 {-0.92/1 0s} c6 3.g4 {+0.41/1 0s} d5 4.d3 {-0.38/1 0s} 
+Bxg4 5.cxd5 cxd5 6.Qc2 {-2.13/1 0s} Bb4+ 7.Bd2 {-2.06/1 0s} Qb6 
+8.Bxb4 {+0.14/1 0s} Qxb4+ 9.Qc3 {-1.56/1 0s} Qd6 10.Qb3 {-2.12/1 0s} 
+Qc6 11.Qd1 {-1.15/1 0s} Na6 12.f4 {-2.48/1 0s} exf4 13.d4 Nb4 
+14.Qd2 {-2.36/1 0s} Qc4 15.Qxb4 {-11.74/1 0s} Qxb4+ 16.Kd1 Nf6 
+17.Bh3 {-13.20/1 0s} O-O 18.Bxg4 {-10.95/1 0s} Nxg4 19.e4 dxe4 
+20.b3 {-21.14/1 0s} Rfd8 21.a3 {-17.72/1 0s} Qxb3+ 22.Kd2 Rxd4+ 
+23.Ke1 {-19.14/1 0s} Rd1+ 24.Ke2 Rad8 25.h3 {-M1/1 0s} Ne3 26.Ra2 {-M2/1 0s} 
+Qxa2+ 27.Nd2 Qxd2# 0-1
+
+And here is the output of the replayer, annotated by "--" lines:
+
+
+woof:knowledge_games charolastra$ ./chessboard.py read ex1.pgn
+NEW GAME
+
+-- I tokenize the PGN file enough to chuck the tokens back into unparsed AST nodes that I iterate through, move by move. 
+
+<pgngame ECO="A20" Site="" Round="" Black="Eric" Result="0-1" Date="2011.04.03" White="Shredder" Event="Best game yet 718 vs 850 w 1m remaining" >
+<pgnmoveparser tokens="1.c4 { Book } e5" />
+<pgnmoveparser tokens="2.g3 { -0.92/1 0s } c6" />
+<pgnmoveparser tokens="3.g4 { +0.41/1 0s } d5" />
+<pgnmoveparser tokens="4.d3 { -0.38/1 0s } Bxg4" />
+<pgnmoveparser tokens="5.cxd5 cxd5" />
+<pgnmoveparser tokens="6.Qc2 { -2.13/1 0s } Bb4+" />
+<pgnmoveparser tokens="7.Bd2 { -2.06/1 0s } Qb6" />
+<pgnmoveparser tokens="8.Bxb4 { +0.14/1 0s } Qxb4+" />
+<pgnmoveparser tokens="9.Qc3 { -1.56/1 0s } Qd6" />
+<pgnmoveparser tokens="10.Qb3 { -2.12/1 0s } Qc6" />
+<pgnmoveparser tokens="11.Qd1 { -1.15/1 0s } Na6" />
+<pgnmoveparser tokens="12.f4 { -2.48/1 0s } exf4" />
+<pgnmoveparser tokens="13.d4 Nb4" />
+<pgnmoveparser tokens="14.Qd2 { -2.36/1 0s } Qc4" />
+<pgnmoveparser tokens="15.Qxb4 { -11.74/1 0s } Qxb4+" />
+<pgnmoveparser tokens="16.Kd1 Nf6" />
+<pgnmoveparser tokens="17.Bh3 { -13.20/1 0s } O-O" />
+<pgnmoveparser tokens="18.Bxg4 { -10.95/1 0s } Nxg4" />
+<pgnmoveparser tokens="19.e4 dxe4" />
+<pgnmoveparser tokens="20.b3 { -21.14/1 0s } Rfd8" />
+<pgnmoveparser tokens="21.a3 { -17.72/1 0s } Qxb3+" />
+<pgnmoveparser tokens="22.Kd2 Rxd4+" />
+<pgnmoveparser tokens="23.Ke1 { -19.14/1 0s } Rd1+" />
+<pgnmoveparser tokens="24.Ke2 Rad8" />
+<pgnmoveparser tokens="25.h3 { -M1/1 0s } Ne3" />
+<pgnmoveparser tokens="26.Ra2 { -M2/1 0s } Qxa2+" />
+<pgnmoveparser tokens="27.Nd2 Qxd2# 0-1" />
+</pgngame>
+
+-- Setting up the initial board
+
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|Bp|Bp|Bp|Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |  |  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|Wp|Wp|Wp|Wp|Wp|Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+-- Here I am iterating through each "move parser" node, parsing it into a move 
+
+<pgnmoveparser tokens="1.c4 { Book } e5" />
+
+-- I need to convert from Algebraic notation to Long Algebraic notation, essentially.
+-- Here I am examining White's first move "c4":
+-- I first deduce that it's a pawn moving (because there is no piece abbreviation before the destination),
+-- then I have to search through every pawn and come up with the unique pawn that has that legal move.
+-- In general, I'm working in the Maybe List monad - I'm folding a function over a sequence of pieces, and the function
+-- returns Nothing (not a valid move) or Just a list of moves (one in normal cases, two in the case of castling).
+-- I take the first of these as the move that was referred to in the original algebraic notation (which I can be sure
+-- is the correct choice - otherwise the notation would be augmented to disambiguate).
+
+W's turn
+[<move start="c2" end="c4" />]
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|Bp|Bp|Bp|Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |Wp|  |  |  |  |  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |Wp|Wp|Wp|Wp|Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+B's turn
+[<move start="e7" end="e5" />]
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|Bp|Bp|  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |Bp|  |  |  |
+---------------------------
+ 4|  |  |Wp|  |  |  |  |  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |Wp|Wp|Wp|Wp|Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="2.g3 { -0.92/1 0s } c6" />
+
+W's turn
+[<move start="g2" end="g3" />]
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|Bp|Bp|  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |Bp|  |  |  |
+---------------------------
+ 4|  |  |Wp|  |  |  |  |  |
+---------------------------
+ 3|  |  |  |  |  |  |Wp|  |
+---------------------------
+ 2|Wp|Wp|  |Wp|Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+B's turn
+[<move start="c7" end="c6" />]
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|  |Bp|  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |Bp|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |Bp|  |  |  |
+---------------------------
+ 4|  |  |Wp|  |  |  |  |  |
+---------------------------
+ 3|  |  |  |  |  |  |Wp|  |
+---------------------------
+ 2|Wp|Wp|  |Wp|Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="3.g4 { +0.41/1 0s } d5" />
+
+W's turn
+[<move start="g3" end="g4" />]
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|  |Bp|  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |Bp|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |Bp|  |  |  |
+---------------------------
+ 4|  |  |Wp|  |  |  |Wp|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |Wp|Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+-- I'm playing black, and the next move opens up the field for my bishops and queen.
+-- I'm ok trading pawns (because I'll be +1).
+
+B's turn
+[<move start="d7" end="d5" />]
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |Bp|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |Wp|  |  |  |Wp|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |Wp|Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="4.d3 { -0.38/1 0s } Bxg4" />
+
+W's turn
+[<move start="d2" end="d3" />]
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |Bp|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |Wp|  |  |  |Wp|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+-- Here I'm trying to control the sides.  I move my bishop just to get a foot in that empty area of the board, 
+-- event though right now I could only expect to trade pieces.  
+
+B's turn
+[<move start="c8" end="g4" />]
+LOST: W [p] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |Bp|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |Wp|  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="5.cxd5 cxd5" />
+
+W's turn
+[<move start="c4" end="d5" />]
+LOST: W [p] B [p]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |Bp|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Wp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+B's turn
+[<move start="c6" end="d5" />]
+LOST: W [pp] B [p]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="6.Qc2 { -2.13/1 0s } Bb4+" />
+
+W's turn
+[<move start="d1" end="c2" />]
+LOST: W [pp] B [p]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|WQ|  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|  |WK|WB|WN|WR|
+---------------------------
+
+-- White starts to move his Queen out, so I move my other Bishop closer to a safe distance to limit his options.
+-- If he goes for the Bishop I'll just bring my Queen out to protect.
+
+B's turn
+[<move start="f8" end="b4" />]
+LOST: W [pp] B [p]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |BQ|BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |BB|  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|WQ|  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|  |WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="7.Bd2 { -2.06/1 0s } Qb6" />
+
+W's turn
+[<move start="c1" end="d2" />]
+LOST: W [pp] B [p]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |BQ|BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |BB|  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|WQ|WB|Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+-- White brought his Bishop out to attack mine, so I bring my Queen out to protect.
+
+B's turn
+[<move start="d8" end="b6" />]
+LOST: W [pp] B [p]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |BQ|  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |BB|  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|WQ|WB|Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="8.Bxb4 { +0.14/1 0s } Qxb4+" />
+
+W's turn
+[<move start="d2" end="b4" />]
+LOST: W [pp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |BQ|  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |WB|  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|WQ|  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+B's turn
+[<move start="b6" end="b4" />]
+LOST: W [ppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |BQ|  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|WQ|  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="9.Qc3 { -1.56/1 0s } Qd6" />
+
+W's turn
+[<move start="c2" end="c3" />]
+LOST: W [ppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |BQ|  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |WQ|Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+-- Sometimes I think it's worth it to trade Queens, but not right now.  I back off.
+
+B's turn
+[<move start="b4" end="d6" />]
+LOST: W [ppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |BQ|  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |WQ|Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="10.Qb3 { -2.12/1 0s } Qc6" />
+
+W's turn
+[<move start="c3" end="b3" />]
+LOST: W [ppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |BQ|  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |BB|  |
+---------------------------
+ 3|  |WQ|  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+B's turn
+[<move start="d6" end="c6" />]
+LOST: W [ppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |BQ|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |BB|  |
+---------------------------
+ 3|  |WQ|  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="11.Qd1 { -1.15/1 0s } Na6" />
+
+W's turn
+[<move start="b3" end="d1" />]
+LOST: W [ppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |BQ|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|WN|WR|
+---------------------------
+
+-- Our Queens dance for a few turns, but he put his back (stupid move? Shredder is 850 here...).
+-- I need some reinforcements so I bring out my Knight
+
+B's turn
+[<move start="b8" end="a6" />]
+LOST: W [ppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|BN|  |BQ|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="12.f4 { -2.48/1 0s } exf4" />
+
+W's turn
+[<move start="f2" end="f4" />]
+LOST: W [ppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|BN|  |BQ|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|Bp|  |  |  |
+---------------------------
+ 4|  |  |  |  |  |Wp|BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|WN|WR|
+---------------------------
+
+B's turn
+[<move start="e5" end="f4" />]
+LOST: W [ppBp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|BN|  |BQ|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |  |  |  |  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |Wp|  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="13.d4 Nb4" />
+
+W's turn
+[<move start="d3" end="d4" />]
+LOST: W [ppBp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|BN|  |BQ|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |  |  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|WN|WR|
+---------------------------
+
+B's turn
+[<move start="a6" end="b4" />]
+LOST: W [ppBp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |BQ|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BN|  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="14.Qd2 { -2.36/1 0s } Qc4" />
+
+W's turn
+[<move start="d1" end="d2" />]
+LOST: W [ppBp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |BQ|  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BN|  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |WQ|Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+-- Protecting my Knight from White's Queen.
+
+B's turn
+[<move start="c6" end="c4" />]
+LOST: W [ppBp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BN|BQ|Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |WQ|Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="15.Qxb4 { -11.74/1 0s } Qxb4+" />
+
+W's turn
+[<move start="d2" end="b4" />]
+LOST: W [ppBp] B [pBN]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |WQ|BQ|Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+-- ...And the silly computer captured the Knight anyway, so I capture the Queen and place him in Check at the same time
+
+B's turn
+[<move start="c4" end="b4" />]
+LOST: W [ppBpQ] B [pBN]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="16.Kd1 Nf6" />
+
+W's turn
+[<move start="e1" end="d1" />]
+LOST: W [ppBpQ] B [pBN]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |BN|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |WB|WN|WR|
+---------------------------
+
+-- I need reinforcements, so I bring out my Knight.
+
+B's turn
+[<move start="g8" end="f6" />]
+LOST: W [ppBpQ] B [pBN]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |  |BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |BN|  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |WB|WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="17.Bh3 { -13.20/1 0s } O-O" />
+
+W's turn
+[<move start="f1" end="h3" />]
+LOST: W [ppBpQ] B [pBN]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |BK|  |  |BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |BN|  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |WB|
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+-- A little too defensive?  I King-side castle now.  
+-- NOTE:  Here you can see how the "O-O-O" move is translated into two separate moves, and each resulting board is printed.
+
+B's turn
+[<move start="e8" end="g8" />, <move start="h8" end="f8" />]
+LOST: W [ppBpQ] B [pBN]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |  |BK|BR|
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |BN|  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |WB|
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+LOST: W [ppBpQ] B [pBN]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |BR|BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |BN|  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|  |Bp|BB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |WB|
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="18.Bxg4 { -10.95/1 0s } Nxg4" />
+
+W's turn
+[<move start="h3" end="g4" />]
+LOST: W [ppBpQ] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |BR|BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |BN|  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|  |Bp|WB|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+-- ...And the silly computer sacrificed his Bishop for mine.
+
+B's turn
+[<move start="f6" end="g4" />]
+LOST: W [ppBpQB] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |BR|BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|  |Bp|BN|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="19.e4 dxe4" />
+
+W's turn
+[<move start="e2" end="e4" />]
+LOST: W [ppBpQB] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |BR|BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |Bp|  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|Wp|Bp|BN|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+-- ...And the silly computer sacrificed a pawn for nothing, opening up a nice hole for me.
+
+B's turn
+[<move start="d5" end="e4" />]
+LOST: W [ppBpQBp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |BR|BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|Bp|Bp|BN|  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="20.b3 { -21.14/1 0s } Rfd8" />
+
+W's turn
+[<move start="b2" end="b3" />]
+LOST: W [ppBpQBp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |BR|BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|Bp|Bp|BN|  |
+---------------------------
+ 3|  |Wp|  |  |  |  |  |  |
+---------------------------
+ 2|Wp|  |  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+-- That castle a few moves ago let me bring my Rook into play.  I'm going to gain control of the center
+-- shortly by capturing that unprotected pawn.
+
+B's turn
+[<move start="f8" end="d8" />]
+LOST: W [ppBpQBp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|Bp|Bp|BN|  |
+---------------------------
+ 3|  |Wp|  |  |  |  |  |  |
+---------------------------
+ 2|Wp|  |  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="21.a3 { -17.72/1 0s } Qxb3+" />
+
+W's turn
+[<move start="a2" end="a3" />]
+LOST: W [ppBpQBp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |BQ|  |Wp|Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|Wp|  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+-- Capturing another unprotected pawn lets me place White in check AGAIN.
+
+B's turn
+[<move start="b4" end="b3" />]
+LOST: W [ppBpQBpp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |Wp|Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|BQ|  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WK|  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="22.Kd2 Rxd4+" />
+
+W's turn
+[<move start="d1" end="d2" />]
+LOST: W [ppBpQBpp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |Wp|Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|BQ|  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |WK|  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |  |  |  |WN|WR|
+---------------------------
+
+B's turn
+[<move start="d8" end="d4" />]
+LOST: W [ppBpQBppp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |BR|Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|BQ|  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |WK|  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |  |  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="23.Ke1 { -19.14/1 0s } Rd1+" />
+
+W's turn
+[<move start="d2" end="e1" />]
+LOST: W [ppBpQBppp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |BR|Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|BQ|  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |  |WK|  |WN|WR|
+---------------------------
+
+B's turn
+[<move start="d4" end="d1" />]
+LOST: W [ppBpQBppp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|BQ|  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |BR|WK|  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="24.Ke2 Rad8" />
+
+W's turn
+[<move start="e1" end="e2" />]
+LOST: W [ppBpQBppp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|  |  |  |  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|BQ|  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |  |WK|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |BR|  |  |WN|WR|
+---------------------------
+
+-- Time to bring the other Rook to squeeze the defenseless King.
+
+B's turn
+[<move start="a8" end="d8" />]
+LOST: W [ppBpQBppp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|BQ|  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |  |WK|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |BR|  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="25.h3 { -M1/1 0s } Ne3" />
+
+W's turn
+[<move start="h2" end="h3" />]
+LOST: W [ppBpQBppp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|BN|  |
+---------------------------
+ 3|Wp|BQ|  |  |  |  |  |Wp|
+---------------------------
+ 2|  |  |  |  |WK|  |  |  |
+---------------------------
+ 1|WR|WN|  |BR|  |  |WN|WR|
+---------------------------
+
+B's turn
+[<move start="g4" end="e3" />]
+LOST: W [ppBpQBppp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|  |  |
+---------------------------
+ 3|Wp|BQ|  |  |BN|  |  |Wp|
+---------------------------
+ 2|  |  |  |  |WK|  |  |  |
+---------------------------
+ 1|WR|WN|  |BR|  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="26.Ra2 { -M2/1 0s } Qxa2+" />
+
+W's turn
+[<move start="a1" end="a2" />]
+LOST: W [ppBpQBppp] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|  |  |
+---------------------------
+ 3|Wp|BQ|  |  |BN|  |  |Wp|
+---------------------------
+ 2|WR|  |  |  |WK|  |  |  |
+---------------------------
+ 1|  |WN|  |BR|  |  |WN|WR|
+---------------------------
+
+-- And nip in the bug White's attempted defense with his Rook.
+
+B's turn
+[<move start="b3" end="a2" />]
+LOST: W [ppBpQBpppR] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|  |  |
+---------------------------
+ 3|Wp|  |  |  |BN|  |  |Wp|
+---------------------------
+ 2|BQ|  |  |  |WK|  |  |  |
+---------------------------
+ 1|  |WN|  |BR|  |  |WN|WR|
+---------------------------
+
+<pgnmoveparser tokens="27.Nd2 Qxd2# 0-1" />
+
+W's turn
+[<move start="b1" end="d2" />]
+LOST: W [ppBpQBpppR] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|  |  |
+---------------------------
+ 3|Wp|  |  |  |BN|  |  |Wp|
+---------------------------
+ 2|BQ|  |  |WN|WK|  |  |  |
+---------------------------
+ 1|  |  |  |BR|  |  |WN|WR|
+---------------------------
+
+-- White attempts something with his Knight... I don't know what.
+
+B's turn
+[<move start="a2" end="d2" />]
+LOST: W [ppBpQBpppRN] B [pBNB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |  |BR|  |  |BK|  |
+---------------------------
+ 7|Bp|Bp|  |  |  |Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |Bp|Bp|  |  |
+---------------------------
+ 3|Wp|  |  |  |BN|  |  |Wp|
+---------------------------
+ 2|  |  |  |BQ|WK|  |  |  |
+---------------------------
+ 1|  |  |  |BR|  |  |WN|WR|
+---------------------------
+
+-- And here I have checkmated the white king.  Go me!
+
+
+As you can see, Shredder was not playing at the top of his game (only 850 Elo).  I have since been playing against him at 1000 Elo (with some J'adoubing...), but I expect that my real Blitz score has improved a bit from my initial evaluation of ~800.
+
+
+
+My chess engine goal + progress 
+-------------------------------
+
+The good thing about taking this class pass-fail is that I can feel free to give a put a lot of effort into what I think would best develop my CS skills.  I haven't written any heuristic-search AI code until now, although I've written plenty of tree-search and statistical learning routines.  
+
+My progress so far can be found on Github at https://github.com/ejconlon/knowledge_games .  From the previous section, you can see a few features: PGN parsing, replaying, and legal move determination.  The most glaring deficiencies now are the lack of En Passant rules, the lax castling rules (can move through Check as currently written), and most importantly, the lack of any determination of Check or Checkmate.  The latter is, of course, next on the plate.  
+
+It can also interactively play a game prompting for user input:
+
+woof:knowledge_games charolastra$ ./chessboard.py play
+welcome
+It's W's turn
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|Bp|Bp|Bp|Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |  |  |
+---------------------------
+ 3|  |  |  |  |  |  |  |  |
+---------------------------
+ 2|Wp|Wp|Wp|Wp|Wp|Wp|Wp|Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+---------------------------
+Choose start col (a-h): g
+Choose start row (1-8): 1
+Choose end col (a-h): f
+Choose end row (1-8): 3
+It's B's turn
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+---------------------------
+ 7|Bp|Bp|Bp|Bp|Bp|Bp|Bp|Bp|
+---------------------------
+ 6|  |  |  |  |  |  |  |  |
+---------------------------
+ 5|  |  |  |  |  |  |  |  |
+---------------------------
+ 4|  |  |  |  |  |  |  |  |
+---------------------------
+ 3|  |  |  |  |  |WN|  |  |
+---------------------------
+ 2|Wp|Wp|Wp|Wp|Wp|Wp|Wp|Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
+---------------------------
+Choose start col (a-h): 
+^C
+
+The game loop is abstract enough to handle all sorts of (2-player) games and agents:
+
+def play(agents, board):
+    print "welcome"
+    moves = []
+    turn = 0
+    winner = None
+
+    while winner is None:
+        agent = agents[turn]
+        print "It's "+str(agent)+"'s turn"
+        print board
+        move = agent.get_move(board)
+        trans_moves = board.translate_move(agent.name, move)
+        if len(trans_moves) == 0:
+            print "Invalid move"
+        else:
+            turn = (turn + 1) % 2
+            agents[turn].send_move(move, board)
+            moves.append(move)
+            for trans_move in trans_moves:
+                board = board.result(agent.name, trans_move)
+            winner = board.who_won()
+
+    print ""
+
+    print board
+    if winner == "draw":
+        print "DRAW"
+    else:
+        print winner+" won!"
+
+    return board, moves, winner
+
+In fact, this same game loop drives an implemention of Tic-Tac-Toe as well, and there are two agents defined for that game: one that prompts for user input and another that simply chooses a random legal move.  
+
+Here is a rough priority of the remaining work:
+1) Finish chess logic regarding Check, Checkmate, Castling, and En Passant.
+2) Enumerate possible chess moves in a sensible order (in anticipation of its use by a minimax alpha-beta agent).
+3) Create a random agent for chess (a strawman opponent).
+4) Write a heuristic minimax alpha-beta agent for Tic-Tac-Toe that will search for optimal moves.
+5) Extract the core logic of the minimaxing agent into a base class.
+6) Create some basic heuristics for chess and evaluate them on replayed game trees to determine weighting/usefulness.
+7) Use heuristics and base logic to implement a minimaxing chess agent.
+8) Improve heuristics, enumeration, and search...
+
+At checkpoint 1 of 4, I think I have a solid base for representing chess games, moves, pieces, etc., and I have been careful to refactor logic into base classes to drive a simpler game as well (Tic-Tac-Toe).  This should give me the ability to test, experiment, and implement the remaining work quickly and cleanly.
+
+

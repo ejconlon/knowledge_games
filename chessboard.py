@@ -536,6 +536,7 @@ if __name__ == "__main__":
             game_parser = parse.PGNGameParser(tokens, ChessPGNMoveParser)
             game = game_parser.game
             board = ChessBoard.empty()
+            print game
             print board
             turn = 0
             for move_parser in game.move_parsers:
@@ -543,6 +544,7 @@ if __name__ == "__main__":
                 it = move_parser.parse_moves(board.grid)
                 first = True
                 while True:
+                    print ""
                     try:
                         if first:
                             move = it.next()
@@ -550,8 +552,8 @@ if __name__ == "__main__":
                         else:
                             move = it.send(board.grid)
                         who = ChessConstants.COLORS[turn]
-                        print who
-                        print move
+                        print who+"'s turn"
+                        #print move
                         trans_moves = board.translate_move(who, move)
                         print trans_moves
                         assert len(trans_moves) > 0

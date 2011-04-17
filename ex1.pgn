@@ -1,0 +1,18 @@
+[Event "Best game yet 718 vs 850 w 1m remaining"]
+[Site ""]
+[Date "2011.04.03"]
+[Round ""]
+[White "Shredder"]
+[Black "Eric"]
+[ECO "A20"]
+[Result "0-1"]
+
+1.c4 {Book} e5 2.g3 {-0.92/1 0s} c6 3.g4 {+0.41/1 0s} d5 4.d3 {-0.38/1 0s}
+Bxg4 5.cxd5 cxd5 6.Qc2 {-2.13/1 0s} Bb4+ 7.Bd2 {-2.06/1 0s} Qb6
+8.Bxb4 {+0.14/1 0s} Qxb4+ 9.Qc3 {-1.56/1 0s} Qd6 10.Qb3 {-2.12/1 0s}
+Qc6 11.Qd1 {-1.15/1 0s} Na6 12.f4 {-2.48/1 0s} exf4 13.d4 Nb4
+14.Qd2 {-2.36/1 0s} Qc4 15.Qxb4 {-11.74/1 0s} Qxb4+ 16.Kd1 Nf6
+17.Bh3 {-13.20/1 0s} O-O 18.Bxg4 {-10.95/1 0s} Nxg4 19.e4 dxe4
+20.b3 {-21.14/1 0s} Rfd8 21.a3 {-17.72/1 0s} Qxb3+ 22.Kd2 Rxd4+
+23.Ke1 {-19.14/1 0s} Rd1+ 24.Ke2 Rad8 25.h3 {-M1/1 0s} Ne3 26.Ra2 {-M2/1 0s}
+Qxa2+ 27.Nd2 Qxd2# 0-1
