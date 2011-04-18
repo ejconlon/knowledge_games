@@ -142,3 +142,52 @@ Qc6 11.Qd1 {-1.15/1 0s} Na6 12.f4 {-2.48/1 0s} exf4 13.d4 Nb4
 23.Ke1 {-19.14/1 0s} Rd1+ 24.Ke2 Rad8 25.h3 {-M1/1 0s} Ne3 26.Ra2 {-M2/1 0s} 
 Qxa2+ 27.Nd2 Qxd2# 0-1
 
+[Event "surprise"]
+[Site ""]
+[Date "2011.04.13"]
+[Round ""]
+[White "Shredder"]
+[Black "Eric"]
+[ECO "C21"]
+[Result "0-1"]
+
+1.e4 {Book} e5 2.d4 {-0.17/1 0s} Bb4+ 3.Nc3 {+1.05/1 0s} Qf6 
+4.dxe5 {-0.14/1 0s} Qxe5 5.Qf3 {+0.25/1 0s} Nf6 6.Qf5 {-5.03/1 0s} 
+Qd6 7.Bf4 {+0.53/1 0s} Qd4 8.Bxc7 {-4.43/1 0s} d6 9.Bxb8 {-7.23/1 0s} 
+Bxf5 10.Bxa7 {-13.48/1 0s} Qxa7 11.exf5 {-7.53/1 0s} 0-1
+
+[Event "checkmateyeah"]
+[Site ""]
+[Date "2011.04.13"]
+[Round ""]
+[White "Eric"]
+[Black "Shredder"]
+[ECO "A00"]
+[Result "1-0"]
+
+1.g3 d5 {Book} 2.Bh3 Bxh3 {-0.60/1 0s} 3.Nxh3 e5 4.b3 e4 {+0.08/1 0s} 
+5.Ba3 d4 {+0.01/1 0s} 6.Bxf8 Qf6 {+2.78/1 0s} 7.Nf4 Qe5 {+2.61/1 0s} 
+8.c4 g5 {+3.75/1 0s} 9.Nd5 e3 {+3.61/1 0s} 10.fxe3 dxe3 11.dxe3 
+Qf5 {+5.05/1 0s} 12.Bg7 Qe4 {+7.53/1 0s} 13.Rf1 Qg2 {+8.58/1 0s} 
+14.Bxh8 Qxh2 15.Nxc7+ Kf8 {+14.08/1 0s} 16.Qd8# 1-0
+
+[Event "jadoube to victory"]
+[Site ""]
+[Date "2011.04.15"]
+[Round ""]
+[White "Eric"]
+[Black "Shredder"]
+[ECO "D00"]
+[Result "1-0"]
+
+1.d4 d5 {Book} 2.c3 a5 {-0.41/1 0s} 3.a3 Nf6 {-0.51/1 0s} 4.Nf3 
+Ne4 {-1.56/1 0s} 5.g3 g6 {-0.73/1 0s} 6.h4 Qd6 {+0.11/1 0s} 7.Ne5 
+Qf6 {-1.13/1 0s} 8.Rh2 Qf5 {-1.79/1 0s} 9.Qd3 Qe6 {-0.52/1 0s} 
+10.Qb5+ c6 {-0.93/1 0s} 11.Qd3 c5 {-1.07/1 0s} 12.Qb5+ Nc6 {+0.58/1 0s} 
+13.Bh3 Qf6 {-0.04/1 0s} 14.f3 cxd4 {+0.32/1 0s} 15.cxd4 Nxg3 
+16.Bg5 Qd6 {-0.22/1 0s} 17.Nc3 e6 {-1.06/1 0s} 18.Bf6 Rg8 {-0.64/1 0s} 
+19.O-O-O Bh6+ {+0.31/1 0s} 20.Kb1 Be3 21.Rg2 Bf4 {-1.59/1 0s} 
+22.Qb6 Bd7 {+1.56/1 0s} 23.Qxb7 Rb8 24.Qa7 Nxe5 {-0.53/1 0s} 
+25.Rdg1 Qb6 {-1.14/1 0s} 26.Nb5 Qxb5 {-9.42/1 0s} 27.Rc1 Rb6 {-8.49/1 0s} 
+28.Rc2 Ra6 {-7.79/1 0s} 29.Qc7 Rc6 {-5.22/1 0s} 30.Qd8# 1-0
+
