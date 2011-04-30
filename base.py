@@ -15,7 +15,7 @@ class Board(object):
         raise Exception("SUBCLASS")
     def who_won(self):
         raise Exception("SUBCLASS")
-    def valid_moves(self):
+    def valid_moves(self, who):
         raise Exception("SUBCLASS")
     def __repr__(self):
         return self.__str__()

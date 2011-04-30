@@ -4,6 +4,7 @@ import base
 import parse
 import copy
 import logging
+import random
 
 class LogWrapper(object):
     def __init__(self, name):
@@ -33,6 +34,7 @@ class ChessConstants:
     QUEEN = "Q"
     KING = "K"
     PIECE_ABBRS = [PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING]
+    PROMOTABLES = [ROOK, KNIGHT, BISHOP, QUEEN]
     COLS = "abcdefgh"
     ROWS = "12345678"
     KING_SIDE_CASTLE="O-O"
@@ -50,6 +52,8 @@ class Piece(object):
         self.abbr = None
     def translate_move(self, move, grid):
         raise Exception("OVERRIDE")
+    def get_moves(self, row, col, grid):
+        for x in "": yield x # OVERRIDE
     def __repr__(self):
         return self.__str__()
     def __str__(self):
@@ -61,7 +65,7 @@ class Pawn(Piece):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.PAWN
     def translate_move(self, move, grid):
-        # TODO PROMOTION AND EN PASSANT
+        # TODO EN PASSANT
         delta = grid.delta(move)
         target_piece = grid.get_end(move)
         if abs(delta['col']) > 1:
@@ -83,6 +87,33 @@ class Pawn(Piece):
             log.warn("Can only move 2 on first move", move, grid)
             return []
         return [move]
+    def get_moves(self, row, col, grid):
+        arow, acol = grid._arow_acol(row, col)
+        direction = -1 if self.color == ChessConstants.WHITE else 1
+        # check forward move 1
+        if True: # for new namespace
+            forward_arow, forward_acol = arow + direction, acol
+            forward_row, forward_col = grid._row_col(forward_arow, forward_acol)
+            if grid.get(forward_row, forward_col) is None: # must not cap
+                promotion = '?' if grid.would_promote(self.color, forward_row) else None
+                yield ChessMove(start_row=row, start_col=col, end_row=forward_row, end_col=forward_col, promotion=promotion)
+        # check opening move 2
+        if not self.moved:
+            double_arow, double_acol = arow + 2*direction, acol
+            double_row, double_col = grid._row_col(double_arow, double_acol)
+            if grid.get(double_row, double_col) is None: # must not cap
+                yield ChessMove(start_row=row, start_col=col, end_row=double_row, end_col=double_col)
+        # check attack left, right
+        for side in [-1, 1]:
+            left_arow, left_acol = arow + direction, acol + side
+            if left_acol >= 0 and left_acol < 8:
+                left_row, left_col = grid._row_col(left_arow, left_acol)
+                target = grid.get(left_row, left_col)
+                if target is not None and target.color != self.color: # must cap
+                    promotion = '?' if grid.would_promote(self.color, left_row) else None
+                    yield ChessMove(start_row=row, start_col=col, end_row=left_row, end_col=left_col, promotion=promotion,
+                                    capture=target.abbr)
+
 
 class Rook(Piece):
     def __init__(self, color):
@@ -200,12 +231,13 @@ class PieceFactory(object):
         return PieceFactory.PIECE_CLASSES[abbr](color)
 
 class ChessMove(base.Move):
-    def __init__(self, start_col, start_row, end_col, end_row, promotion=None):
+    def __init__(self, start_col, start_row, end_col, end_row, promotion=None, capture=None):
         self.start_col = start_col
         self.start_row = start_row
         self.end_col = end_col
         self.end_row = end_row
         self.promotion = promotion
+        self.capture = None
     def __str__(self):
         return '<move start="%s%s" end="%s%s" />' % \
                 (self.start_col, self.start_row, self.end_col, self.end_row)
@@ -308,6 +340,10 @@ class ChessGrid(object):
         log.debug("Found", moving_piece, start_col, start_row)
         return moving_piece, start_col, start_row
 
+    def would_promote(self, color, row):
+        return (color == ChessConstants.WHITE and row == ChessConstants.ROWS[-1]) or \
+               (color == ChessConstants.BLACK and row == ChessConstants.ROWS[0])
+
     @classmethod
     def empty(cls):
         array = [[None for i in xrange(8)] for j in xrange(8)]
@@ -348,6 +384,7 @@ class ChessGrid(object):
             t += "\n"
             t +="---------------------------\n"
         return t[:-1]
+
     def disambiguate(self, who, token, grid):
         orig_token = token
         promotion = None
@@ -406,6 +443,13 @@ class ChessGrid(object):
         log.debug("Found move", move)
         return move
 
+    def get_piece_tuples(self, color):
+        for row in ChessConstants.ROWS:
+            for col in ChessConstants.COLS:
+                piece = self.get(row, col)
+                if piece is not None and piece.color == color:
+                    yield piece, row, col
+
 
 class ChessBoard(base.Board):
     def __init__(self, grid):
@@ -448,8 +492,10 @@ class ChessBoard(base.Board):
         else:
             return moving_piece.translate_move(move, self.grid)
 
-    def valid_moves(self):
-        return [] # TODO
+    def valid_moves(self, who):
+        for piece, row, col in self.grid.get_piece_tuples(who):
+            for move in piece.get_moves(row, col, self.grid):
+                yield move
 
     def result(self, who, move):
         log.info(move, who)
@@ -477,6 +523,27 @@ class ChessPlayerAgent(base.Agent):
         end_col = raw_input("Choose end col (a-h): ")
         end_row = raw_input("Choose end row (1-8): ")
         return ChessMove(start_col, start_row, end_col, end_row)
+
+class ChessRandomAgent(base.Agent):
+    def send_move(self, move, result):
+        pass
+
+    def _filter_promotions(self, valid_moves):
+        for move in valid_moves:
+            if move.promotion == '?':
+                for abbr in ChessConstants.PROMOTABLES:
+                    movep = copy.deepcopy(move)
+                    movep.promotion = abbr
+                    yield movep
+            else:
+                yield move
+
+    def get_move(self, board):
+        color = self.name # name, who, color... no consistency...
+        possible = list(self._filter_promotions(board.valid_moves(color)))
+        log.debug("Possible moves", possible)
+        return random.choice(possible)
+
 
 class ChessPGNMoveParser(parse.BasePGNMoveParser):
 
@@ -524,6 +591,10 @@ if __name__ == "__main__":
     if mode == "play":
         board = ChessBoard.empty()
         agents = [ChessPlayerAgent(color) for color in ChessConstants.COLORS]
+        final_board, moves, winner = base.play(agents, board)
+    elif mode == "random":
+        board = ChessBoard.empty()
+        agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
         final_board, moves, winner = base.play(agents, board)
     elif mode == "read":
         filename = sys.argv[2]
