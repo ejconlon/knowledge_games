@@ -51,6 +51,7 @@ def play(agents, board):
             agents[turn].send_move(move, board)
             moves.append(move)
             for trans_move in trans_moves:
+                print "Moving: "+str(trans_move)
                 board = board.result(agent.name, trans_move)
             winner = board.who_won()
 

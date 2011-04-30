@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from _collections import defaultdict
 
 import base
 import parse
@@ -20,12 +21,13 @@ class LogWrapper(object):
             self.wrap.log(level, arg)
 
 log = LogWrapper("chess")
-th = logging.FileHandler('/tmp/chess.log')
-log.wrap.addHandler(th)
+#th = logging.FileHandler('/tmp/chess.log')
+#log.wrap.addHandler(th)
 log.wrap.setLevel(logging.DEBUG)
 
 class ChessConstants:
-    TURN_WO_CAP_LIMIT = 50
+    TURNS_WO_CAP_LIMIT = 50
+    TURNS_REP_LIMIT = 3
     WHITE = "W"
     BLACK = "B"
     COLORS = [WHITE, BLACK]
@@ -53,10 +55,14 @@ class Piece(object):
         self.color = color
         self.moved = False
         self.abbr = None
+        self.last_moved_on = None
+        self.last_move_delta = None
     def translate_move(self, move, grid):
         raise Exception("OVERRIDE")
     def get_moves(self, row, col, grid):
-        for x in "": yield x # OVERRIDE
+        raise Exception("OVERRIDE")
+    def enpassantable(self, cur_turn):
+        return False
     def __repr__(self):
         return self.__str__()
     def __str__(self):
@@ -67,6 +73,10 @@ class Pawn(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.PAWN
+    def enpassantable(self, cur_turn):
+        if self.last_moved_on == cur_turn-1:
+            return abs(self.last_move_delta['col']) == 2
+        return False
     def translate_move(self, move, grid):
         # TODO EN PASSANT
         delta = grid.delta(move)
@@ -233,6 +243,9 @@ class Queen(Piece):
             yield move
 
 class King(Piece):
+    DELTAS = [(0,1),(0,-1),(1,0),(-1,0),
+              (1,1),(1,-1),(-1,1),(-1,-1)]
+
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.KING
@@ -272,6 +285,17 @@ class King(Piece):
             log.debug("King moving max 2 taxi-cab", move, grid)
             return [move]
         return []
+    def get_moves(self, row, col, grid):
+        arow, acol = grid._arow_acol(row, col)
+        for delta in King.DELTAS:
+            arowp, acolp = arow + delta[0], acol + delta[1]
+            if arowp >= 0 and arowp < 8 and acolp >= 0 and acolp < 8:
+                rowp, colp = grid._row_col(arowp, acolp)
+                target = grid.get(rowp, colp)
+                if target is None:
+                    yield ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                elif target.color != self.color:
+                    yield ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
 
 class PieceFactory(object):
     PIECE_CLASSES = {
@@ -294,10 +318,16 @@ class ChessMove(base.Move):
         self.end_col = end_col
         self.end_row = end_row
         self.promotion = promotion
-        self.capture = None
+        self.capture = capture
     def __str__(self):
-        return '<move start="%s%s" end="%s%s" />' % \
+        s = '<move start="%s%s" end="%s%s"' % \
                 (self.start_col, self.start_row, self.end_col, self.end_row)
+        if self.promotion is not None:
+            s += ' promotion="%s"' % self.promotion
+        if self.capture is not None:
+            s += ' capture="%s"' % self.capture
+        s += " />"
+        return s
 
 class ChessGrid(object):
     def __init__(self, array):
@@ -497,6 +527,9 @@ class ChessGrid(object):
         assert start_row is not None
         assert moving_piece is not None
         move = ChessMove(start_col, start_row, end_col, end_row, promotion)
+        target = grid.get_end(move)
+        if target is not None:
+            move.capture = target.abbr
         log.debug("Found move", move)
         return move
 
@@ -515,6 +548,8 @@ class ChessBoard(base.Board):
                      ChessConstants.BLACK: []}
         self.age = 0
         self.turns_wo_cap = 0
+        self.who_is_checkmated = None
+        self.seen = defaultdict(lambda: 0)
 
     @classmethod
     def empty(cls):
@@ -524,16 +559,21 @@ class ChessBoard(base.Board):
         whitelost = "".join(piece.abbr for piece in self.lost[ChessConstants.WHITE])
         blacklost = "".join(piece.abbr for piece in self.lost[ChessConstants.BLACK])
         s = ""
-        s += "TURNS: %d TWOC: %d\n" % (self.age, self.turns_wo_cap)
+        s += "TURNS: %d TWOC: %d SEEN: %d\n" % (self.age, self.turns_wo_cap, self.get_seen_this())
         s += "LOST: W [%s] B [%s]\n" % (whitelost, blacklost)
         s += str(self.grid)
         return s
 
     def who_won(self):
-        if self.turns_wo_cap >= ChessConstants.TURN_WO_CAP_LIMIT:
-            return "DRAW"
+        if self.turns_wo_cap >= ChessConstants.TURNS_WO_CAP_LIMIT:
+            return "DRAW (EXCEEDED CAPTURE LIMIT)"
+        elif self.get_seen_this() >= ChessConstants.TURNS_REP_LIMIT:
+            return "DRAW (EXCEEDED REPEAT LIMIT)"
         else:
-            return None
+            return self.who_is_checkmated
+
+    def get_seen_this(self):
+        return self.seen[str(self.grid)]
 
     def translate_move(self, who, move):
         if not self.grid.makes_sense(move):
@@ -578,6 +618,9 @@ class ChessBoard(base.Board):
             moving_piece = PieceFactory.new_piece(who, move.promotion)
         board.grid.set_end(move, moving_piece)
         moving_piece.moved = True
+        moving_piece.last_moved_on = board.age
+        moving_piece.last_move_delta = board.grid.delta(move)
+        board.seen[str(board.grid)] += 1
         return board
 
 
