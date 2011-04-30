@@ -25,6 +25,7 @@ log.wrap.addHandler(th)
 log.wrap.setLevel(logging.DEBUG)
 
 class ChessConstants:
+    TURN_WO_CAP_LIMIT = 50
     WHITE = "W"
     BLACK = "B"
     COLORS = [WHITE, BLACK]
@@ -152,6 +153,9 @@ class Rook(Piece):
                 if grid.clear_path(move): yield move
 
 class Knight(Piece):
+    DELTAS = [(1,2),(-1,2),(1,-2),(-1,-2),
+              (2,1),(2,-1),(-2,1),(-2,-1)]
+
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.KNIGHT
@@ -163,6 +167,17 @@ class Knight(Piece):
             log.warn("Must move taxi-cab distance of 3 by (1,2)", move, grid)
             return []
         return [move]
+    def get_moves(self, row, col, grid):
+        arow, acol = grid._arow_acol(row, col)
+        for delta in Knight.DELTAS:
+            arowp, acolp = arow + delta[0], acol + delta[1]
+            if arowp >= 0 and arowp < 8 and acolp >= 0 and acolp < 8:
+                rowp, colp = grid._row_col(arowp, acolp)
+                target = grid.get(rowp, colp)
+                if target is None:
+                    yield ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                elif target.color != self.color:
+                    yield ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
 
 class Bishop(Piece):
     def __init__(self, color):
@@ -177,11 +192,26 @@ class Bishop(Piece):
             log.warn("Not clear path", move, grid)
             return []
         return [move]
+    def get_moves(self, row, col, grid):
+        arow, acol = grid._arow_acol(row, col)
+        for inc in range(-7, 0) + range(1, 8):
+            arowp, acolp = arow + inc, acol + inc
+            if arowp >= 0 and arowp < 8 and acolp >= 0 and acolp < 8:
+                rowp, colp = grid._row_col(arowp, acolp)
+                target = grid.get(rowp, colp)
+                if target is None:
+                    move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                    if grid.clear_path(move): yield move
+                elif target.color != self.color:
+                    move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
+                    if grid.clear_path(move): yield move
 
 class Queen(Piece):
     def __init__(self, color):
         Piece.__init__(self, color)
         self.abbr = ChessConstants.QUEEN
+        self.proxy_bishop = Bishop(color)
+        self.proxy_rook = Rook(color)
     def translate_move(self, move, grid):
         delta = grid.delta(move)
         if not grid.clear_path(move):
@@ -196,6 +226,11 @@ class Queen(Piece):
             log.debug("Moving Queen like Rook")
             return [move]
         return []
+    def get_moves(self, row, col, grid):
+        for move in self.proxy_rook.get_moves(row, col, grid):
+            yield move
+        for move in self.proxy_bishop.get_moves(row, col, grid):
+            yield move
 
 class King(Piece):
     def __init__(self, color):
@@ -478,6 +513,8 @@ class ChessBoard(base.Board):
         self.grid = grid
         self.lost = {ChessConstants.WHITE: [],
                      ChessConstants.BLACK: []}
+        self.age = 0
+        self.turns_wo_cap = 0
 
     @classmethod
     def empty(cls):
@@ -486,12 +523,17 @@ class ChessBoard(base.Board):
     def __str__(self):
         whitelost = "".join(piece.abbr for piece in self.lost[ChessConstants.WHITE])
         blacklost = "".join(piece.abbr for piece in self.lost[ChessConstants.BLACK])
-        s = "LOST: W [%s] B [%s]\n" % (whitelost, blacklost)
+        s = ""
+        s += "TURNS: %d TWOC: %d\n" % (self.age, self.turns_wo_cap)
+        s += "LOST: W [%s] B [%s]\n" % (whitelost, blacklost)
         s += str(self.grid)
         return s
 
     def who_won(self):
-        return None # TODO
+        if self.turns_wo_cap >= ChessConstants.TURN_WO_CAP_LIMIT:
+            return "DRAW"
+        else:
+            return None
 
     def translate_move(self, who, move):
         if not self.grid.makes_sense(move):
@@ -522,12 +564,16 @@ class ChessBoard(base.Board):
     def result(self, who, move):
         log.info(move, who)
         board = copy.deepcopy(self)
+        board.age += 1
         moving_piece = copy.deepcopy(board.grid.get_start(move))
         target_piece = board.grid.get_end(move)
         board.grid.set_start(move, None)
         if target_piece is not None:
             log.info("Losing piece", target_piece)
             board.lost[target_piece.color].append(target_piece)
+            board.turns_wo_cap = 0
+        else:
+            board.turns_wo_cap += 1
         if move.promotion is not None:
             moving_piece = PieceFactory.new_piece(who, move.promotion)
         board.grid.set_end(move, moving_piece)
