@@ -6,6 +6,8 @@ import copy
 import logging
 import random
 
+class LogicException(Exception): pass
+
 class LogWrapper(object):
     def __init__(self, name):
         self.wrap = logging.getLogger(name)
@@ -128,6 +130,26 @@ class Rook(Piece):
             log.warn("Not clear path", move, grid)
             return []
         return [move]
+    def get_moves(self, row, col, grid):
+        arow, acol = grid._arow_acol(row, col)
+        for arowp in xrange(8):
+            rowp, colp = grid._row_col(arowp, acol)
+            target = grid.get(rowp, colp)
+            if target is None:
+                move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                if grid.clear_path(move): yield move
+            elif target.color != self.color:
+                move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
+                if grid.clear_path(move): yield move
+        for acolp in xrange(8):
+            rowp, colp = grid._row_col(arow, acolp)
+            target = grid.get(rowp, colp)
+            if target is None:
+                move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                if grid.clear_path(move): yield move
+            elif target.color != self.color:
+                move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
+                if grid.clear_path(move): yield move
 
 class Knight(Piece):
     def __init__(self, color):
@@ -528,6 +550,13 @@ class ChessRandomAgent(base.Agent):
     def send_move(self, move, result):
         pass
 
+    def _assert_valid(self, color, board, valid_moves):
+        for move in valid_moves:
+            trans = board.translate_move(color, move)
+            if len(trans) == 0:
+                raise LogicException("Generated invalid move: "+str(move))
+            yield move
+
     def _filter_promotions(self, valid_moves):
         for move in valid_moves:
             if move.promotion == '?':
@@ -540,7 +569,10 @@ class ChessRandomAgent(base.Agent):
 
     def get_move(self, board):
         color = self.name # name, who, color... no consistency...
-        possible = list(self._filter_promotions(board.valid_moves(color)))
+        possible = list(
+            self._assert_valid(color, board,
+                self._filter_promotions(
+                    board.valid_moves(color))))
         log.debug("Possible moves", possible)
         return random.choice(possible)
 
@@ -584,10 +616,8 @@ class ChessPGNMoveParser(parse.BasePGNMoveParser):
             yield grid.disambiguate(ChessConstants.BLACK, second, grid)
 
 
-
-if __name__ == "__main__":
-    import sys
-    mode = sys.argv[1]
+def main(args):
+    mode = args[1]
     if mode == "play":
         board = ChessBoard.empty()
         agents = [ChessPlayerAgent(color) for color in ChessConstants.COLORS]
@@ -596,8 +626,14 @@ if __name__ == "__main__":
         board = ChessBoard.empty()
         agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
         final_board, moves, winner = base.play(agents, board)
+    elif mode == "manyrandom":
+        while True:
+            try:
+                main(["", "random"])
+            except IndexError:
+                continue
     elif mode == "read":
-        filename = sys.argv[2]
+        filename = args[2]
         with open(filename, 'r') as f:
             chars = f.read()
         game_chars = parse.split_games(chars)
@@ -637,3 +673,6 @@ if __name__ == "__main__":
                         break
 
 
+if __name__ == "__main__":
+    import sys
+    main(sys.argv)
