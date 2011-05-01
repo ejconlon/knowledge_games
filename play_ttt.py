@@ -2,6 +2,11 @@
 
 import base
 
+log = base.LogWrapper("ttt")
+#th = base.logging.FileHandler('/tmp/chess.log')
+#log.wrap.addHandler(th)
+log.wrap.setLevel(base.logging.DEBUG)
+
 class TTTMove(base.Move):
     def __init__(self, row, col):
         self.row = row
@@ -85,6 +90,11 @@ class TTTBoard(base.Board):
     def empty(cls):
         grid = [[None for i in xrange(3)] for j in xrange(3)]
         return TTTBoard(grid)
+    def valid_moves(self, who):
+        for rowi in xrange(3):
+            for colj in xrange(3):
+                if self.is_valid_row_col(rowi, colj):
+                    yield TTTMove(rowi, colj)
 
 
 def board_iterator(moves, board):
@@ -101,7 +111,6 @@ class PlayerAgent(base.Agent):
         row = int(raw_input("Choose row (1-3): "))
         col = int(raw_input("Choose col (1-3): "))
         return TTTMove(row-1, col-1)
-    def send_move(self, move, board): pass
 
 import random
 class RandomAgent(base.Agent):
@@ -114,7 +123,98 @@ class RandomAgent(base.Agent):
             move = TTTMove(row, col)
             valid = board.is_valid_row_col(row, col)
         return move
-    def send_move(self, move, board): pass
+
+class TTTHeuristic(base.Heuristic):
+    def evaluate(self, who, board):
+        N = {True: {3: 0, 2: 0, 1: 0},
+             False: {3: 0, 2: 0, 1: 0}}
+
+        # fill in N
+        for rowi in xrange(3):
+            row = board.grid[rowi]
+            self._add_runs(N, who, row)
+
+        for colj in xrange(3):
+            col = [board.grid[i][colj] for i in xrange(3)]
+            self._add_runs(N, who, col)
+
+        if True: # for namespace
+            down_diag = [board.grid[i][i] for i in xrange(3)]
+            self._add_runs(N, who, down_diag)
+
+        if True: # for namepace
+            up_diag = [board.grid[i][2-i] for i in xrange(3)]
+            self._add_runs(N, who, up_diag)
+
+        log.debug("WHO "+who, "BOARD "+str(board), "N "+str(N))
+
+        if N[True][3] > 0:
+            return base.HVal.pos_inf()
+        elif N[False][3] > 0:
+            return base.HVal.neg_inf()
+        else:
+            return base.HVal((2*N[True][2]+N[True][1]) - (2*N[False][2]+N[False][1]))
+
+    def _add_runs(self, N, who, row, curwho=None, curlen=0):
+        if len(row) == 0:
+            if curwho is not None:
+                N[who == curwho][curlen] += 1
+        else:
+            if curwho is None:
+                self._add_runs(N, who, row[1:], row[0], 1)
+            elif row[0] == curwho:
+                self._add_runs(N, who, row[1:], curwho, curlen+1)
+            else:
+                N[who == curwho][curlen] += 1
+                self._add_runs(N, who, row[1:], row[0], 1)
+
+class HeuristicAgent(base.Agent):
+    def __init__(self, name):
+        base.Agent.__init__(self, name)
+        self.heuristic = TTTHeuristic()
+    def get_move(self, board):
+        max_hval = None
+        max_move = None
+        for move in board.valid_moves(self.name):
+            hval = self.heuristic.evaluate(self.name, board.result(self.name, move))
+            if max_hval is None or max_hval < hval:
+                max_hval = hval
+                max_move = move
+        return max_move
+
+class MinMaxSearchAgent(HeuristicAgent):
+    def __init__(self, name, other_name, max_depth=-1):
+        HeuristicAgent.__init__(self, name)
+        self.other_name = other_name
+        self.max_depth = max_depth
+    def get_move(self, board):
+        move, hval = MinMaxSearchAgent._get_move(self.name, self.other_name, board,
+                            depth=0, max_depth=self.max_depth, heuristic=self.heuristic)
+        return move
+    @staticmethod
+    def _get_move(who, other, board, depth, max_depth, heuristic):
+        max_hval = None
+        max_move = None
+        for move in board.valid_moves(who):
+            result = board.result(who, move)
+            hval = None
+
+            if result.who_won() is not None:
+                if result.who_won() == who:
+                    hval = base.HVal.pos_inf()
+                else:
+                    hval = base.HVal.neg_inf()
+            elif max_depth < 0 or depth < max_depth:
+                min_move, min_hval = MinMaxSearchAgent._get_move(other, who, result, depth+1, max_depth, heuristic)
+                hval = - min_hval
+            else:
+                hval = heuristic.evaluate(who, result)
+
+            if max_hval is None or hval > max_hval:
+                max_hval = hval
+                max_move = move
+        return max_move, max_hval
+
 
 def pairs(moves):
     last = None
@@ -173,7 +273,8 @@ if __name__ == "__main__":
         f = open(fn, "a")
 
     for i in xrange(n):
-        agents = [RandomAgent("X"), RandomAgent("O")]
+        #agents = [MinMaxSearchAgent("X", "O", 2), RandomAgent("O")]
+        agents = [MinMaxSearchAgent("X", "O", 2), RandomAgent("O")]
         final_board, moves, winner = base.play(agents, TTTBoard.empty())
         print moves
         for board in board_iterator(moves, TTTBoard.empty()):

@@ -4,28 +4,16 @@ from _collections import defaultdict
 import base
 import parse
 import copy
-import logging
 import random
 
 class LogicException(Exception): pass
 class StalemateException(base.WinnerException): pass
 class MatedException(base.WinnerException): pass
 
-class LogWrapper(object):
-    def __init__(self, name):
-        self.wrap = logging.getLogger(name)
-    def debug(self, *args): self.log(logging.DEBUG, *args)
-    def info(self, *args): self.log(logging.INFO, *args)
-    def warn(self, *args): self.log(logging.WARN, *args)
-    def error(self, *args): self.log(logging.ERROR, *args)
-    def log(self, level, *args):
-        for arg in args:
-            self.wrap.log(level, arg)
-
-log = LogWrapper("chess")
-#th = logging.FileHandler('/tmp/chess.log')
+log = base.LogWrapper("chess")
+#th = base.logging.FileHandler('/tmp/chess.log')
 #log.wrap.addHandler(th)
-log.wrap.setLevel(logging.DEBUG)
+log.wrap.setLevel(base.logging.DEBUG)
 
 class ChessConstants:
     TURNS_WO_CAP_LIMIT = 50
@@ -657,7 +645,7 @@ class ChessRandomAgent(base.Agent):
             if move.capture == 'K':
                 return True
         if stalemated:
-            raise StalemateException("DRAW (STALEMATED")
+            raise StalemateException("DRAW (STALEMATED)")
         return False
 
     def _filter_not_puts_in_check(self, depth, color, board, valid_moves):

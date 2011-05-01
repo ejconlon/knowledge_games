@@ -1,4 +1,16 @@
 
+import logging
+
+class LogWrapper(object):
+    def __init__(self, name):
+        self.wrap = logging.getLogger(name)
+    def debug(self, *args): self.log(logging.DEBUG, *args)
+    def info(self, *args): self.log(logging.INFO, *args)
+    def warn(self, *args): self.log(logging.WARN, *args)
+    def error(self, *args): self.log(logging.ERROR, *args)
+    def log(self, level, *args):
+        for arg in args:
+            self.wrap.log(level, arg)
 
 class Move(object):
     def __repr__(self):
@@ -28,9 +40,57 @@ class Agent(object):
     def get_move(self, board):
         raise Exception("SUBCLASS")
     def send_move(self, move, result):
-        raise Exception("SUBCLASS")
+        #raise Exception("SUBCLASS")
+        pass
     def __str__(self):
         return self.name
+
+# need extended real numbers for heuristic values
+# i.e. R U {+inf, -inf}
+# +inf = certain victory, -inf = certain defeat
+class HVal(object):
+    POS_INF = "inf"
+    NEG_INF = "-inf"
+
+    def __init__(self, val):
+        self.val = val
+    @staticmethod
+    def pos_inf():
+        return HVal(HVal.POS_INF)
+    @staticmethod
+    def neg_inf():
+        return HVal(HVal.NEG_INF)
+
+    def __cmp__(self, other):
+        if self.val == HVal.POS_INF:
+            if other.val == HVal.POS_INF:
+                return 0
+            else:
+                return 1
+        elif self.val == HVal.NEG_INF:
+            if other.val == HVal.NEG_INF:
+                return 0
+            else:
+                return -1
+        elif other.val == HVal.POS_INF:
+            return -1
+        elif other.val == HVal.NEG_INF:
+            return 1
+        else:
+            return self.val.__cmp__(other.val)
+
+    def __neg__(self):
+        if self.val == HVal.POS_INF:
+            return HVal.neg_inf()
+        elif self.val == HVal.NEG_INF:
+            return HVal.pos_inf()
+        else:
+            return HVal(self.val.__neg__())
+
+class Heuristic(object):
+    def evaluate(self, who, board):
+        raise Exception("SUBCLASS")
+        # and return an HVal
 
 class WinnerException(Exception):
     def __init__(self, winner):
