@@ -168,54 +168,6 @@ class TTTHeuristic(base.Heuristic):
                 N[who == curwho][curlen] += 1
                 self._add_runs(N, who, row[1:], row[0], 1)
 
-class HeuristicAgent(base.Agent):
-    def __init__(self, name):
-        base.Agent.__init__(self, name)
-        self.heuristic = TTTHeuristic()
-    def get_move(self, board):
-        max_hval = None
-        max_move = None
-        for move in board.valid_moves(self.name):
-            hval = self.heuristic.evaluate(self.name, board.result(self.name, move))
-            if max_hval is None or max_hval < hval:
-                max_hval = hval
-                max_move = move
-        return max_move
-
-class MinMaxSearchAgent(HeuristicAgent):
-    def __init__(self, name, other_name, max_depth=-1):
-        HeuristicAgent.__init__(self, name)
-        self.other_name = other_name
-        self.max_depth = max_depth
-    def get_move(self, board):
-        move, hval = MinMaxSearchAgent._get_move(self.name, self.other_name, board,
-                            depth=0, max_depth=self.max_depth, heuristic=self.heuristic)
-        return move
-    @staticmethod
-    def _get_move(who, other, board, depth, max_depth, heuristic):
-        max_hval = None
-        max_move = None
-        for move in board.valid_moves(who):
-            result = board.result(who, move)
-            hval = None
-
-            if result.who_won() is not None:
-                if result.who_won() == who:
-                    hval = base.HVal.pos_inf()
-                else:
-                    hval = base.HVal.neg_inf()
-            elif max_depth < 0 or depth < max_depth:
-                min_move, min_hval = MinMaxSearchAgent._get_move(other, who, result, depth+1, max_depth, heuristic)
-                hval = - min_hval
-            else:
-                hval = heuristic.evaluate(who, result)
-
-            if max_hval is None or hval > max_hval:
-                max_hval = hval
-                max_move = move
-        return max_move, max_hval
-
-
 def pairs(moves):
     last = None
     for move in moves:
@@ -242,11 +194,8 @@ def format_pair(pair, turn):
     return s
 
 def write_game(agents, moves, winner):
-    meta = []
-    meta.append(("Event", ""))
-    meta.append(("Game", "TicTacToe"))
-    meta.append(("White", agents[0].name))
-    meta.append(("Black", agents[1].name))
+    meta = [("Event", ""), ("Game", "TicTacToe"),
+            ("White", agents[0].name), ("Black", agents[1].name)]
     result = None
     if winner == "draw":
         result = "1/2-1/2"
@@ -273,8 +222,8 @@ if __name__ == "__main__":
         f = open(fn, "a")
 
     for i in xrange(n):
-        #agents = [MinMaxSearchAgent("X", "O", 2), RandomAgent("O")]
-        agents = [MinMaxSearchAgent("X", "O", 2), RandomAgent("O")]
+        agents = [base.MinMaxSearchAgent("X", "O", TTTHeuristic(), 2), RandomAgent("O")]
+        #agents = [base.MinMaxSearchAgent("X", "O", TTTHeuristic(), 2), base.HeuristicAgent("O", TTTHeuristic())]
         final_board, moves, winner = base.play(agents, TTTBoard.empty())
         print moves
         for board in board_iterator(moves, TTTBoard.empty()):
