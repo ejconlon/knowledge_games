@@ -32,6 +32,11 @@ class Agent(object):
     def __str__(self):
         return self.name
 
+class WinnerException(Exception):
+    def __init__(self, winner):
+        Exception.__init__(self, "Winner: "+winner)
+        self.winner = winner
+
 def play(agents, board):
     print "welcome"
     moves = []
@@ -42,7 +47,11 @@ def play(agents, board):
         agent = agents[turn]
         print "It's "+str(agent)+"'s turn"
         print board
-        move = agent.get_move(board)
+        try:
+            move = agent.get_move(board)
+        except WinnerException, e:
+            winner = e.winner
+            break
         trans_moves = board.translate_move(agent.name, move)
         if len(trans_moves) == 0:
             print "Invalid move"
