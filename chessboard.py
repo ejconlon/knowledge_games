@@ -113,7 +113,7 @@ def sgn(num):
     else: return -1
 
 class Piece(object):
-    __slots__ = ['color','moved','abbr', 'last_moved_on', 'last_move_delta']
+    __slots__ = ['color','moved','abbr', 'last_moved_on', 'last_move_delta', 'proxy_bishop', 'proxy_rook']
     def __init__(self, color):
         self.color = color
         self.moved = False
@@ -301,8 +301,10 @@ class Queen(Piece):
         return []
     def get_moves(self, row, col, grid):
         for move in self.proxy_rook.get_moves(row, col, grid):
+            move.abbr = self.abbr
             yield move
         for move in self.proxy_bishop.get_moves(row, col, grid):
+            move.abbr = self.abbr
             yield move
 
 class King(Piece):
@@ -386,8 +388,11 @@ class ChessMove(base.Move):
         self.capture = capture
     def to_pgn(self):
         abbr = '' if (self.abbr is None or self.abbr == 'p') else self.abbr
-        conj = '-' if self.capture is None else "x"
-        return ''.join([abbr, self.start_col, self.start_row, conj, self.end_col, self.end_row])
+        conj = '' if self.capture is None else "x"
+        prom = ''
+        if self.promotion is not None:
+            prom = '='+self.promotion
+        return ''.join([abbr, self.start_col, self.start_row, conj, self.end_col, self.end_row, prom])
     def __str__(self):
         s = '<move start="%s%s" end="%s%s"' % \
                 (self.start_col, self.start_row, self.end_col, self.end_row)
@@ -473,25 +478,26 @@ class ChessGrid(object):
                 continue
             for row in ChessConstants.ROWS:
                 if piece_row is not None and row != piece_row:
-                    break
-                piece = self.get(col=col, row=row)
-                if piece is None:
-                    continue
-                elif piece.color != who:
-                    continue
-                elif piece.abbr != piece_abbr:
-                    continue
-                elif col is not None and \
-                     row is not None and \
-                     end_col is not None and \
-                     end_row is not None and \
-                     len(piece.translate_move(ChessMove(piece.abbr, col, row, end_col, end_row), self)) == 0:
-                    continue
+                    pass
                 else:
-                    start_col = col
-                    start_row = row
-                    moving_piece = piece
-                    break
+                    piece = self.get(col=col, row=row)
+                    if piece is None:
+                        continue
+                    elif piece.color != who:
+                        continue
+                    elif piece.abbr != piece_abbr:
+                        continue
+                    elif col is not None and \
+                        row is not None and \
+                        end_col is not None and \
+                        end_row is not None and \
+                        len(piece.translate_move(ChessMove(piece.abbr, col, row, end_col, end_row), self)) == 0:
+                        continue
+                    else:
+                        start_col = col
+                        start_row = row
+                        moving_piece = piece
+                        break
             if moving_piece is not None:
                 break
         log.debug("Found", moving_piece, start_col, start_row)
