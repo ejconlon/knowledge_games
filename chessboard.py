@@ -172,13 +172,13 @@ class Pawn(Piece):
             forward_row, forward_col = grid._row_col(forward_arow, forward_acol)
             if grid.get(forward_row, forward_col) is None: # must not cap
                 promotion = '?' if grid.would_promote(self.color, forward_row) else None
-                yield ChessMove(start_row=row, start_col=col, end_row=forward_row, end_col=forward_col, promotion=promotion)
+                yield ChessMove(self.abbr, start_row=row, start_col=col, end_row=forward_row, end_col=forward_col, promotion=promotion)
         # check opening move 2
         if not self.moved:
             double_arow, double_acol = arow + 2*direction, acol
             double_row, double_col = grid._row_col(double_arow, double_acol)
             if grid.get(double_row, double_col) is None: # must not cap
-                yield ChessMove(start_row=row, start_col=col, end_row=double_row, end_col=double_col)
+                yield ChessMove(self.abbr, start_row=row, start_col=col, end_row=double_row, end_col=double_col)
         # check attack left, right
         for side in [-1, 1]:
             left_arow, left_acol = arow + direction, acol + side
@@ -187,7 +187,7 @@ class Pawn(Piece):
                 target = grid.get(left_row, left_col)
                 if target is not None and target.color != self.color: # must cap
                     promotion = '?' if grid.would_promote(self.color, left_row) else None
-                    yield ChessMove(start_row=row, start_col=col, end_row=left_row, end_col=left_col, promotion=promotion,
+                    yield ChessMove(self.abbr, start_row=row, start_col=col, end_row=left_row, end_col=left_col, promotion=promotion,
                                     capture=target.abbr)
 
 
@@ -210,19 +210,19 @@ class Rook(Piece):
             rowp, colp = grid._row_col(arowp, acol)
             target = grid.get(rowp, colp)
             if target is None:
-                move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                move = ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp)
                 if grid.clear_path(move): yield move
             elif target.color != self.color:
-                move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
+                move = ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
                 if grid.clear_path(move): yield move
         for acolp in xrange(8):
             rowp, colp = grid._row_col(arow, acolp)
             target = grid.get(rowp, colp)
             if target is None:
-                move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                move = ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp)
                 if grid.clear_path(move): yield move
             elif target.color != self.color:
-                move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
+                move = ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
                 if grid.clear_path(move): yield move
 
 class Knight(Piece):
@@ -248,9 +248,9 @@ class Knight(Piece):
                 rowp, colp = grid._row_col(arowp, acolp)
                 target = grid.get(rowp, colp)
                 if target is None:
-                    yield ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                    yield ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp)
                 elif target.color != self.color:
-                    yield ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
+                    yield ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
 
 class Bishop(Piece):
     def __init__(self, color):
@@ -273,10 +273,10 @@ class Bishop(Piece):
                 rowp, colp = grid._row_col(arowp, acolp)
                 target = grid.get(rowp, colp)
                 if target is None:
-                    move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                    move = ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp)
                     if grid.clear_path(move): yield move
                 elif target.color != self.color:
-                    move = ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
+                    move = ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
                     if grid.clear_path(move): yield move
 
 class Queen(Piece):
@@ -342,7 +342,7 @@ class King(Piece):
                 arow, acol = grid._arow_acol(move.start_row, move.start_col)
                 acol += sgn(delta['col'])
                 end_row, end_col = grid._row_col(arow, acol)
-                rook_move = ChessMove(rook_col, rook_row, end_col, end_row)
+                rook_move = ChessMove(self.abbr, rook_col, rook_row, end_col, end_row)
                 return [move, rook_move]
         elif (jumps[0] == 0 or jumps[0] == 1) and jumps[1] == 1:
             log.debug("King moving max 2 taxi-cab", move, grid)
@@ -356,9 +356,9 @@ class King(Piece):
                 rowp, colp = grid._row_col(arowp, acolp)
                 target = grid.get(rowp, colp)
                 if target is None:
-                    yield ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp)
+                    yield ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp)
                 elif target.color != self.color:
-                    yield ChessMove(start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
+                    yield ChessMove(self.abbr, start_row=row, start_col=col, end_row=rowp, end_col=colp, capture=target.abbr)
 
 class PieceFactory(object):
     PIECE_CLASSES = {
@@ -375,14 +375,19 @@ class PieceFactory(object):
         return PieceFactory.PIECE_CLASSES[abbr](color)
 
 class ChessMove(base.Move):
-    __slots__ = ['start_col', 'start_row', 'end_col', 'end_row', 'promotion', 'capture']
-    def __init__(self, start_col, start_row, end_col, end_row, promotion=None, capture=None):
+    __slots__ = ['abbr', 'start_col', 'start_row', 'end_col', 'end_row', 'promotion', 'capture']
+    def __init__(self, abbr, start_col, start_row, end_col, end_row, promotion=None, capture=None):
+        self.abbr = abbr
         self.start_col = start_col
         self.start_row = start_row
         self.end_col = end_col
         self.end_row = end_row
         self.promotion = promotion
         self.capture = capture
+    def to_pgn(self):
+        abbr = '' if (self.abbr is None or self.abbr == 'p') else self.abbr
+        conj = '-' if self.capture is None else "x"
+        return ''.join([abbr, self.start_col, self.start_row, conj, self.end_col, self.end_row])
     def __str__(self):
         s = '<move start="%s%s" end="%s%s"' % \
                 (self.start_col, self.start_row, self.end_col, self.end_row)
@@ -480,7 +485,7 @@ class ChessGrid(object):
                      row is not None and \
                      end_col is not None and \
                      end_row is not None and \
-                     len(piece.translate_move(ChessMove(col, row, end_col, end_row), self)) == 0:
+                     len(piece.translate_move(ChessMove(piece.abbr, col, row, end_col, end_row), self)) == 0:
                     continue
                 else:
                     start_col = col
@@ -587,7 +592,7 @@ class ChessGrid(object):
         assert start_col is not None
         assert start_row is not None
         assert moving_piece is not None
-        move = ChessMove(start_col, start_row, end_col, end_row, promotion)
+        move = ChessMove(moving_piece.abbr, start_col, start_row, end_col, end_row, promotion)
         target = grid.get_end(move)
         if target is not None:
             move.capture = target.abbr
@@ -808,7 +813,7 @@ class ChessPlayerAgent(base.Agent):
         start_row = raw_input("Choose start row (1-8): ")
         end_col = raw_input("Choose end col (a-h): ")
         end_row = raw_input("Choose end row (1-8): ")
-        return ChessMove(start_col, start_row, end_col, end_row)
+        return ChessMove(None, start_col, start_row, end_col, end_row)
 
 class ChessRandomAgent(base.Agent):
     def get_move(self, board):
@@ -886,16 +891,15 @@ def main(args):
         final_board, moves, winner = base.play(agents, board)
     elif mode == "random":
         board = ChessBoard.empty()
-        #agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
+        agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
         #agents = [base.HeuristicAgent(ChessConstants.WHITE, ChessHeuristic()), ChessRandomAgent(ChessConstants.BLACK)]
-        agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2), ChessRandomAgent(ChessConstants.BLACK)]
+        #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2), ChessRandomAgent(ChessConstants.BLACK)]
         #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=ChessHeuristic(), max_depth=2)]
 
         final_board, moves, winner = base.play(agents, board)
-        #if not "DRAW" in winner:
-        #    raise base.WinnerException(winner)
-        #if "STALEMATE" in winner:
-        #    raise StalemateException(winner)
+        pgn = parse.write_game("Chess", agents, moves, winner)
+        print ""
+        print pgn
     elif mode == "manyrandom":
         while True:
             try:

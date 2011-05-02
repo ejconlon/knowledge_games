@@ -144,6 +144,51 @@ def until(token_iter, end_token):
         t = token_iter.next()
     return token_iter, sub_tokens
 
+def pairs(moves):
+    last = None
+    for move in moves:
+        if last is None:
+            last = move
+        else:
+            yield (last, move)
+            last = None
+    if last is not None:
+        yield (last, None)
+
+def format_meta(meta):
+    s = ""
+    for k, v in meta:
+        s += '[%s "%s"]\n' % (k, v)
+    return s
+
+def format_pair(pair, turn):
+    s = "%d." % turn
+    a, b = pair
+    s += a.to_pgn() + " "
+    if b is not None:
+        s += b.to_pgn()
+    return s
+
+def write_game(game, agents, moves, winner):
+    meta = [("Event", ""), ("Game", game),
+            ("White", agents[0].name), ("Black", agents[1].name)]
+    result = None
+    if "draw" in winner.lower():
+        result = "1/2-1/2"
+    elif winner == agents[0].name:
+        result = "1-0"
+    else:
+        result = "0-1"
+    meta.append(("Result", result))
+
+    out = ""
+    turn = 0
+    for pair in pairs(moves):
+        turn += 1
+        out += format_pair(pair, turn)+"\n"
+
+    return "\n".join([format_meta(meta), out, ""])
+
 if __name__ == "__main__":
     import sys
     filename = sys.argv[1]

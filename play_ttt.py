@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import base
+import parse
 
 log = base.LogWrapper("ttt")
 th = base.logging.FileHandler('/tmp/chess.log')
@@ -169,50 +170,6 @@ class TTTHeuristic(base.Heuristic):
                 N[who == curwho][curlen] += 1
                 self._add_runs(N, who, row[1:], row[0], 1)
 
-def pairs(moves):
-    last = None
-    for move in moves:
-        if last is None:
-            last = move
-        else:
-            yield (last, move)
-            last = None
-    if last is not None:
-        yield (last, None)
-
-def format_meta(meta):
-    s = ""
-    for k, v in meta:
-        s += '[%s "%s"]\n' % (k, v)
-    return s
-
-def format_pair(pair, turn):
-    s = "%d." % turn
-    a, b = pair
-    s += a.to_pgn() + " "
-    if b is not None:
-        s += b.to_pgn()
-    return s
-
-def write_game(agents, moves, winner):
-    meta = [("Event", ""), ("Game", "TicTacToe"),
-            ("White", agents[0].name), ("Black", agents[1].name)]
-    result = None
-    if winner == "draw":
-        result = "1/2-1/2"
-    elif winner == agents[0].name:
-        result = "1-0"
-    else:
-        result = "0-1"
-    meta.append(("Result", result))
-
-    out = ""
-    turn = 0
-    for pair in pairs(moves):
-        turn += 1
-        out += format_pair(pair, turn)+"\n"
-
-    return "\n".join([format_meta(meta), out, ""])
 
 if __name__ == "__main__":
     import sys
@@ -230,7 +187,7 @@ if __name__ == "__main__":
         for board in board_iterator(moves, TTTBoard.empty()):
             print board
             print ""
-        pgn = write_game(agents, moves, winner)
+        pgn = parse.write_game("TicTacToe", agents, moves, winner)
         print pgn
         if f is not None:
             f.write(pgn)
