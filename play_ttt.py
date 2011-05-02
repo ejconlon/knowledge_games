@@ -3,9 +3,10 @@
 import base
 
 log = base.LogWrapper("ttt")
-#th = base.logging.FileHandler('/tmp/chess.log')
-#log.wrap.addHandler(th)
+th = base.logging.FileHandler('/tmp/chess.log')
+log.wrap.addHandler(th)
 log.wrap.setLevel(base.logging.DEBUG)
+log.enabled = False
 
 class TTTMove(base.Move):
     def __init__(self, row, col):

@@ -2,7 +2,6 @@
 
 import base
 import parse
-import copy
 import random
 
 class PMap(object):
@@ -82,9 +81,10 @@ class StalemateException(base.WinnerException): pass
 class MatedException(base.WinnerException): pass
 
 log = base.LogWrapper("chess")
-#th = base.logging.FileHandler('/tmp/chess.log')
-#log.wrap.addHandler(th)
+th = base.logging.FileHandler('/tmp/chess.log')
+log.wrap.addHandler(th)
 log.wrap.setLevel(base.logging.DEBUG)
+log.enabled = False
 
 class ChessConstants:
     TURNS_WO_CAP_LIMIT = 50
@@ -886,9 +886,9 @@ def main(args):
         final_board, moves, winner = base.play(agents, board)
     elif mode == "random":
         board = ChessBoard.empty()
-        agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
+        #agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
         #agents = [base.HeuristicAgent(ChessConstants.WHITE, ChessHeuristic()), ChessRandomAgent(ChessConstants.BLACK)]
-        #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=1), ChessRandomAgent(ChessConstants.BLACK)]
+        agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2), ChessRandomAgent(ChessConstants.BLACK)]
         #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=ChessHeuristic(), max_depth=2)]
 
         final_board, moves, winner = base.play(agents, board)

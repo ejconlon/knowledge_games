@@ -4,13 +4,15 @@ import logging
 class LogWrapper(object):
     def __init__(self, name):
         self.wrap = logging.getLogger(name)
+        self.enabled = False
     def debug(self, *args): self.log(logging.DEBUG, *args)
     def info(self, *args): self.log(logging.INFO, *args)
     def warn(self, *args): self.log(logging.WARN, *args)
     def error(self, *args): self.log(logging.ERROR, *args)
     def log(self, level, *args):
-        for arg in args:
-            self.wrap.log(level, arg)
+        if self.enabled:
+            for arg in args:
+                self.wrap.log(level, arg)
 
 class Move(object):
     def __repr__(self):
@@ -160,6 +162,7 @@ def play(agents, board):
             move = agent.get_move(board)
         except WinnerException, e:
             winner = e.winner
+            break
         trans_moves = board.translate_move(agent.name, move)
         if len(trans_moves) == 0:
             print "Invalid move"
