@@ -890,6 +890,10 @@ def main(args):
         agents = [ChessPlayerAgent(color) for color in ChessConstants.COLORS]
         final_board, moves, winner = base.play(agents, board)
     elif mode == "random":
+        f = None
+        if len(args) > 2:
+            fn = args[2]
+            f = open(fn, "a")
         board = ChessBoard.empty()
         agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
         #agents = [base.HeuristicAgent(ChessConstants.WHITE, ChessHeuristic()), ChessRandomAgent(ChessConstants.BLACK)]
@@ -900,6 +904,9 @@ def main(args):
         pgn = parse.write_game("Chess", agents, moves, winner)
         print ""
         print pgn
+        if f is not None:
+            f.write(pgn)
+            f.close()
     elif mode == "manyrandom":
         while True:
             try:
