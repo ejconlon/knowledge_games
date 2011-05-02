@@ -1,10 +1,81 @@
 #!/usr/bin/env python
-from _collections import defaultdict
 
 import base
 import parse
 import copy
 import random
+
+class PMap(object):
+    @staticmethod
+    def empty():
+        return PMap(None, None)
+    def __init__(self, k, v, l=None, r=None):
+        self.k = k
+        self.v = v
+        self.l = l
+        self.r = r
+    def set(self, k, v):
+        if k is None:
+            raise KeyError("Cannot set null key")
+        if self.k is None or k == self.k:
+            return PMap(k, v, self.l, self.r)
+        elif k < self.k:
+            if self.l is None:
+                return PMap(self.k, self.v, PMap(k,v), self.r)
+            else:
+                return PMap(self.k, self.v, self.l.set(k, v), self.r)
+        else:
+            if self.r is None:
+                return PMap(self.k, self.v, self.l, PMap(k,v))
+            else:
+                return PMap(self.k, self.v, self.l, self.r.set(k, v))
+    def get(self, k, default_lambda=None):
+        if k is None:
+            raise KeyError("Cannot get null key")
+        if self.k is None:
+            if default_lambda is not None:
+                return default_lambda()
+            else:
+                raise KeyError(str(k)+" not found")
+        elif k == self.k:
+            return self.v
+        elif k < self.k:
+            if self.l is None:
+                if default_lambda is not None:
+                    return default_lambda()
+                else:
+                    raise KeyError(str(k)+" not found")
+            else:
+                return self.l.get(k, default_lambda)
+        else:
+            if self.r is None:
+                if default_lambda is not None:
+                    return default_lambda()
+                else:
+                    raise KeyError(str(k)+" not found")
+            else:
+                return self.r.get(k, default_lambda)
+    def sorted_keys(self):
+        if self.k is None:
+            raise KeyError("Cannot rebalance null tree")
+        if self.l is not None:
+            keys = self.l.sorted_keys()
+        else:
+            keys = []
+        keys.append(self.k)
+        if self.r is not None:
+            keys.extend(self.r.sorted_keys())
+        return keys
+
+    def rebalance(self):
+        keys = self.sorted_keys()
+        random.shuffle(keys)
+        m = PMap.empty()
+        for k in keys:
+            m = m.set(k, self.get(k))
+        return m
+
+
 
 class LogicException(Exception): pass
 class StalemateException(base.WinnerException): pass
@@ -338,18 +409,18 @@ class ChessGrid(object):
         return row, col
     def get(self, row, col):
         arow, acol = self._arow_acol(row, col)
-        return self.array[arow][acol]
+        return self.array.get(arow+8*acol, lambda: None)
     def get_start(self, move):
         return self.get(col=move.start_col, row=move.start_row)
     def get_end(self, move):
         return self.get(col=move.end_col, row=move.end_row)
     def set(self, row, col, piece):
         arow, acol = self._arow_acol(row, col)
-        self.array[arow][acol] = piece
+        return ChessGrid(self.array.set(arow+8*acol, piece))
     def set_start(self, move, piece):
-        self.set(col=move.start_col, row=move.start_row, piece=piece)
+        return self.set(col=move.start_col, row=move.start_row, piece=piece)
     def set_end(self, move, piece):
-        self.set(col=move.end_col, row=move.end_row, piece=piece)
+        return self.set(col=move.end_col, row=move.end_row, piece=piece)
     def delta(self, move):
         arow_start, acol_start = self._arow_acol(row=move.start_row, col=move.start_col)
         arow_end, acol_end = self._arow_acol(row=move.end_row, col=move.end_col)
@@ -427,30 +498,26 @@ class ChessGrid(object):
 
     @classmethod
     def empty(cls):
-        array = [[None for i in xrange(8)] for j in xrange(8)]
-        grid = ChessGrid(array)
+        grid = ChessGrid(PMap.empty())
         for col in ChessConstants.COLS:
-            grid.set("7", col, Pawn(ChessConstants.BLACK))
-            grid.set("2", col, Pawn(ChessConstants.WHITE))
+            grid = grid.set("7", col, Pawn(ChessConstants.BLACK))
+            grid = grid.set("2", col, Pawn(ChessConstants.WHITE))
         for col in "ah":
-            grid.set("8", col, Rook(ChessConstants.BLACK))
-            grid.set("1", col, Rook(ChessConstants.WHITE))
+            grid = grid.set("8", col, Rook(ChessConstants.BLACK))
+            grid = grid.set("1", col, Rook(ChessConstants.WHITE))
         for col in "bg":
-            grid.set("8", col, Knight(ChessConstants.BLACK))
-            grid.set("1", col, Knight(ChessConstants.WHITE))
+            grid = grid.set("8", col, Knight(ChessConstants.BLACK))
+            grid = grid.set("1", col, Knight(ChessConstants.WHITE))
         for col in "cf":
-            grid.set("8", col, Bishop(ChessConstants.BLACK))
-            grid.set("1", col, Bishop(ChessConstants.WHITE))
+            grid = grid.set("8", col, Bishop(ChessConstants.BLACK))
+            grid = grid.set("1", col, Bishop(ChessConstants.WHITE))
         for col in "d":
-            grid.set("8", col, Queen(ChessConstants.BLACK))
-            grid.set("1", col, Queen(ChessConstants.WHITE))
+            grid = grid.set("8", col, Queen(ChessConstants.BLACK))
+            grid = grid.set("1", col, Queen(ChessConstants.WHITE))
         for col in "e":
-            grid.set("8", col, King(ChessConstants.BLACK))
-            grid.set("1", col, King(ChessConstants.WHITE))
-        return grid
-    #def copy(self):
-    #    array = [[x for x in self.array[j]] for j in xrange(len(self.array))]
-    #    return ChessGrid(array)
+            grid = grid.set("8", col, King(ChessConstants.BLACK))
+            grid = grid.set("1", col, King(ChessConstants.WHITE))
+        return ChessGrid(grid.array.rebalance())
     def __str__(self):
         t = "  | a| b| c| d| e| f| g| h|\n"
         t +="---------------------------\n"
@@ -536,22 +603,45 @@ class ChessGrid(object):
 
 
 class ChessBoard(base.Board):
-    __slots__ = ['grid', 'lost', 'turns', 'turns_wo_cap', 'seen']
-    def __init__(self, grid):
+    __slots__ = ['grid', 'white_lost', 'black_lost',
+                 'white_nlost', 'black_nlost', 'turns', 'turns_wo_cap', 'seen']
+    def __init__(self, grid,
+                 white_lost, white_nlost,
+                 black_lost, black_nlost,
+                 turns, turns_wo_cap, seen):
         self.grid = grid
-        self.lost = {ChessConstants.WHITE: [],
-                     ChessConstants.BLACK: []}
-        self.turns = 0
-        self.turns_wo_cap = 0
-        self.seen = defaultdict(lambda: 0)
+        self.white_lost = white_lost
+        self.white_nlost = white_nlost
+        self.black_lost = black_lost
+        self.black_nlost = black_nlost
+        self.turns = turns
+        self.turns_wo_cap = turns_wo_cap
+        self.seen = seen
+
+    def copy(self):
+        return ChessBoard(grid=self.grid,
+                          white_lost=self.white_lost, white_nlost=self.white_nlost,
+                          black_lost=self.black_lost, black_nlost=self.black_nlost,
+                          turns=self.turns, turns_wo_cap=self.turns_wo_cap, seen=self.seen)
 
     @classmethod
     def empty(cls):
-        return ChessBoard(ChessGrid.empty())
+        grid = ChessGrid.empty()
+        white_lost = PMap.empty()
+        white_nlost = 0
+        black_lost = PMap.empty()
+        black_nlost = 0
+        turns = 0
+        turns_wo_cap = 0
+        seen = PMap.empty()
+        return ChessBoard(grid=grid,
+                          white_lost=white_lost, white_nlost=white_nlost,
+                          black_lost=black_lost, black_nlost=black_nlost,
+                          turns=turns, turns_wo_cap=turns_wo_cap, seen=seen)
 
     def __str__(self):
-        whitelost = "".join(piece.abbr for piece in self.lost[ChessConstants.WHITE])
-        blacklost = "".join(piece.abbr for piece in self.lost[ChessConstants.BLACK])
+        whitelost = "".join(self.white_lost.get(i) for i in xrange(self.white_nlost))
+        blacklost = "".join(self.black_lost.get(i) for i in xrange(self.black_nlost))
         s = ""
         s += "TURNS: %d TWOC: %d SEEN: %d\n" % (self.turns, self.turns_wo_cap, self.get_seen_this())
         s += "LOST: W [%s] B [%s]\n" % (whitelost, blacklost)
@@ -567,7 +657,8 @@ class ChessBoard(base.Board):
             return None
 
     def get_seen_this(self):
-        return self.seen[str(self.grid)]
+        k = str(self.grid)
+        return self.seen.get(k, lambda: 0)
 
     def translate_move(self, who, move):
         if not self.grid.makes_sense(move):
@@ -656,10 +747,13 @@ class ChessBoard(base.Board):
     def _filter_promotions(valid_moves):
         for move in valid_moves:
             if move.promotion == '?':
-                for abbr in ChessConstants.PROMOTABLES:
-                    movep = copy.deepcopy(move)
-                    movep.promotion = abbr
-                    yield movep
+                # FORGET IT
+                move.promotion = 'Q'
+                yield move
+                #for abbr in ChessConstants.PROMOTABLES:
+                #    movep = copy.deepcopy(move)
+                #    movep.promotion = abbr
+                #    yield movep
             else:
                 yield move
 
@@ -677,28 +771,34 @@ class ChessBoard(base.Board):
 
     def result(self, who, move):
         log.info(move, who)
-        board = copy.deepcopy(self)
+        board = self.copy()
         board.turns += 1
         moving_piece = board.grid.get_start(move)
         target_piece = board.grid.get_end(move)
         # pick up the piece
-        board.grid.set_start(move, None)
+        board.grid = board.grid.set_start(move, None)
         if target_piece is not None: # capture
             log.info("Losing piece", target_piece)
-            board.lost[target_piece.color].append(target_piece)
+            if target_piece.color == ChessConstants.WHITE:
+                board.white_lost = board.white_lost.set(board.white_nlost, target_piece.abbr)
+                board.white_nlost += 1
+            else:
+                board.black_lost = board.black_lost.set(board.black_nlost, target_piece.abbr)
+                board.black_nlost += 1
             board.turns_wo_cap = 0 # reset turn_wo_cap counter
         else: # not a capture
             board.turns_wo_cap += 1
         if move.promotion is not None: # replace w/ promoted piece
             moving_piece = PieceFactory.new_piece(who, move.promotion)
         # put down in new location
-        board.grid.set_end(move, moving_piece)
+        board.grid = board.grid.set_end(move, moving_piece)
         # set last move info (used in castling/enpassant/pawn opening rules)
         moving_piece.moved = True
         moving_piece.last_moved_on = board.turns
         moving_piece.last_move_delta = board.grid.delta(move)
         # mark that we've seen this board (for 3x repetition -> draw)
-        board.seen[str(board.grid)] += 1
+        k = str(board.grid)
+        board.seen = board.seen.set(k, board.seen.get(k, lambda: 0)+1)
         return board
 
 
@@ -734,10 +834,10 @@ class ChessHeuristic(base.Heuristic):
 class ChessMinMaxSearchAgent(base.MinMaxSearchAgent):
     def __init__(self, name, other_name, heuristic, max_depth=-1):
         base.MinMaxSearchAgent.__init__(self, name, other_name, heuristic, max_depth)
-    #def _valid_moves(self, who, board):
-    #    l = list(board.valid_moves(who))
-    #    random.shuffle(l)
-    #    return l
+    def _valid_moves(self, who, board):
+        l = list(board.valid_moves(who))
+        random.shuffle(l)
+        return l
 
 class ChessPGNMoveParser(parse.BasePGNMoveParser):
 
@@ -786,9 +886,9 @@ def main(args):
         final_board, moves, winner = base.play(agents, board)
     elif mode == "random":
         board = ChessBoard.empty()
-        #agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
+        agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
         #agents = [base.HeuristicAgent(ChessConstants.WHITE, ChessHeuristic()), ChessRandomAgent(ChessConstants.BLACK)]
-        agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=1), ChessRandomAgent(ChessConstants.BLACK)]
+        #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=1), ChessRandomAgent(ChessConstants.BLACK)]
         #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=ChessHeuristic(), max_depth=2)]
 
         final_board, moves, winner = base.play(agents, board)
