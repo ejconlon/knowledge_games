@@ -112,11 +112,10 @@ class MinMaxSearchAgent(HeuristicAgent):
         self.other_name = other_name
         self.max_depth = max_depth
     def get_move(self, board):
-        move, hval = MinMaxSearchAgent._get_move(self.name, self.other_name, board,
+        move, hval =self._get_move_sub(self.name, self.other_name, board,
                             depth=1, max_depth=self.max_depth, heuristic=self.heuristic)
         return move
-    @staticmethod
-    def _get_move(who, other, board, depth, max_depth, heuristic):
+    def _get_move_sub(self, who, other, board, depth, max_depth, heuristic):
         max_hval = None
         max_move = None
         for move in board.valid_moves(who):
@@ -129,7 +128,7 @@ class MinMaxSearchAgent(HeuristicAgent):
                 else:
                     hval = HVal.neg_inf()
             elif max_depth < 0 or depth < max_depth:
-                min_move, min_hval = MinMaxSearchAgent._get_move(other, who, result, depth+1, max_depth, heuristic)
+                min_move, min_hval = self._get_move_sub(other, who, result, depth+1, max_depth, heuristic)
                 hval = - min_hval
             else:
                 hval = heuristic.evaluate(who, result)
