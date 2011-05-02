@@ -101,7 +101,7 @@ class ChessConstants:
     KING = "K"
     PIECE_ABBRS = [PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING]
     PROMOTABLES = [ROOK, KNIGHT, BISHOP, QUEEN]
-    VALUE = {PAWN: 1, ROOK: 5, KNIGHT: 3, BISHOP: 3, QUEEN: 9, KING: 10}
+    VALUE = {PAWN: 1, ROOK: 5, KNIGHT: 3, BISHOP: 3, QUEEN: 9, KING: 100}
     COLS = "abcdefgh"
     ROWS = "12345678"
     KING_SIDE_CASTLE="O-O"
@@ -901,10 +901,10 @@ def main(args):
             fn = args[2]
             f = open(fn, "a")
         board = ChessBoard.empty()
-        agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
+        #agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
         #agents = [base.HeuristicAgent(ChessConstants.WHITE, ChessHeuristic()), ChessRandomAgent(ChessConstants.BLACK)]
         #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2), ChessRandomAgent(ChessConstants.BLACK)]
-        #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=ChessHeuristic(), max_depth=2)]
+        agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=ChessHeuristic(), max_depth=2)]
 
         final_board, moves, winner = base.play(agents, board)
         pgn = parse.write_game("Chess", agents, moves, winner)
