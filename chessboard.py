@@ -30,6 +30,7 @@ class ChessConstants:
     KING = "K"
     PIECE_ABBRS = [PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING]
     PROMOTABLES = [ROOK, KNIGHT, BISHOP, QUEEN]
+    VALUE = {PAWN: 1, ROOK: 5, KNIGHT: 3, BISHOP: 3, QUEEN: 9, KING: 10}
     COLS = "abcdefgh"
     ROWS = "12345678"
     KING_SIDE_CASTLE="O-O"
@@ -41,6 +42,7 @@ def sgn(num):
     else: return -1
 
 class Piece(object):
+    __slots__ = ['color','moved','abbr', 'last_moved_on', 'last_move_delta']
     def __init__(self, color):
         self.color = color
         self.moved = False
@@ -302,6 +304,7 @@ class PieceFactory(object):
         return PieceFactory.PIECE_CLASSES[abbr](color)
 
 class ChessMove(base.Move):
+    __slots__ = ['start_col', 'start_row', 'end_col', 'end_row', 'promotion', 'capture']
     def __init__(self, start_col, start_row, end_col, end_row, promotion=None, capture=None):
         self.start_col = start_col
         self.start_row = start_row
@@ -320,6 +323,7 @@ class ChessMove(base.Move):
         return s
 
 class ChessGrid(object):
+    __slots__ = ['array']
     def __init__(self, array):
         self.array = array
     def _arow_acol(self, row, col):
@@ -444,9 +448,9 @@ class ChessGrid(object):
             grid.set("8", col, King(ChessConstants.BLACK))
             grid.set("1", col, King(ChessConstants.WHITE))
         return grid
-    def copy(self):
-        array = [[x for x in self.array[j]] for j in xrange(len(self.array))]
-        return ChessGrid(array)
+    #def copy(self):
+    #    array = [[x for x in self.array[j]] for j in xrange(len(self.array))]
+    #    return ChessGrid(array)
     def __str__(self):
         t = "  | a| b| c| d| e| f| g| h|\n"
         t +="---------------------------\n"
@@ -532,15 +536,13 @@ class ChessGrid(object):
 
 
 class ChessBoard(base.Board):
+    __slots__ = ['grid', 'lost', 'turns', 'turns_wo_cap', 'seen']
     def __init__(self, grid):
         self.grid = grid
         self.lost = {ChessConstants.WHITE: [],
                      ChessConstants.BLACK: []}
-        self.turns\
-        = 0
+        self.turns = 0
         self.turns_wo_cap = 0
-        self.who_is_mated = None
-        self.who_is_checked = None
         self.seen = defaultdict(lambda: 0)
 
     @classmethod
@@ -562,7 +564,7 @@ class ChessBoard(base.Board):
         elif self.get_seen_this() >= ChessConstants.TURNS_REP_LIMIT:
             return "DRAW (EXCEEDED REPEAT LIMIT)"
         else:
-            return self.who_is_mated
+            return None
 
     def get_seen_this(self):
         return self.seen[str(self.grid)]
@@ -588,14 +590,94 @@ class ChessBoard(base.Board):
         else:
             return moving_piece.translate_move(move, self.grid)
 
-    def valid_moves(self, who):
+    def valid_moves_init(self, who):
         for piece, row, col in self.grid.get_piece_tuples(who):
             for move in piece.get_moves(row, col, self.grid):
                 yield move
 
-    def result(dont_use_self, who, move):
+    @staticmethod
+    def _puts_in_check(depth, color, board, move):
+        for trans_move in board.translate_move(color, move):
+            board = board.result(color, trans_move)
+        return ChessBoard._is_mated(depth+1, color, board)
+
+    #@staticmethod
+    #def _puts_in_stalemate(depth, color, board, move):
+    #    for trans_move in board.translate_move(color, move):
+    #        board = board.result(color, trans_move)
+    #    return ChessBoard._is_stalemated(depth+1, color, board)
+
+    #@staticmethod
+    #def _is_stalemated(depth, color, board):
+    #    other = ChessConstants.BLACK if color == ChessConstants.WHITE else ChessConstants.WHITE
+    #    for move in ChessBoard._get_moves(depth+1, other, board):
+    #        return False
+    #    return True
+
+    @staticmethod
+    def _is_mated(depth, color, board):
+        other = ChessConstants.BLACK if color == ChessConstants.WHITE else ChessConstants.WHITE
+        for move in ChessBoard._get_moves(depth+1, other, board):
+            if move.capture == 'K':
+                return True
+        return False
+
+    #@staticmethod
+    #def _filter_not_stalemates(depth, color, board, valid_moves):
+    #    stalemated = True
+    #    for move in valid_moves:
+    #        if not ChessBoard._puts_in_stalemate(depth+1, color, board, move):
+    #            stalemated = False
+    #            yield move
+    #    if stalemated:
+    #        other = ChessConstants.BLACK if color == ChessConstants.WHITE else ChessConstants.WHITE
+    #        raise StalemateException(other)
+
+    @staticmethod
+    def _filter_not_puts_in_check(depth, color, board, valid_moves):
+        mated = True
+        for move in valid_moves:
+            if not ChessBoard._puts_in_check(depth+1, color, board, move):
+                mated = False
+                yield move
+        if mated:
+            other = ChessConstants.BLACK if color == ChessConstants.WHITE else ChessConstants.WHITE
+            raise MatedException(other) # "other" is winner if "color" is mated
+
+    @staticmethod
+    def _assert_valid(color, board, valid_moves):
+        for move in valid_moves:
+            trans = board.translate_move(color, move)
+            if len(trans) == 0:
+                raise LogicException("Generated invalid move: "+str(move))
+            yield move
+
+    @staticmethod
+    def _filter_promotions(valid_moves):
+        for move in valid_moves:
+            if move.promotion == '?':
+                for abbr in ChessConstants.PROMOTABLES:
+                    movep = copy.deepcopy(move)
+                    movep.promotion = abbr
+                    yield movep
+            else:
+                yield move
+
+    @staticmethod
+    def _get_moves(depth, color, board):
+        core = ChessBoard._filter_promotions(
+                    board.valid_moves_init(color))
+        #core = ChessBoard._filter_not_stalemates(depth, color, board, core)
+        if depth < 2:
+            core = ChessBoard._filter_not_puts_in_check(depth, color, board, core)
+        return core
+
+    def valid_moves(self, who):
+        return ChessBoard._get_moves(0, who, self)
+
+    def result(self, who, move):
         log.info(move, who)
-        board = copy.deepcopy(dont_use_self)
+        board = copy.deepcopy(self)
         board.turns += 1
         moving_piece = board.grid.get_start(move)
         target_piece = board.grid.get_end(move)
@@ -621,9 +703,6 @@ class ChessBoard(base.Board):
 
 
 class ChessPlayerAgent(base.Agent):
-    def send_move(self, move, result):
-        pass
-
     def get_move(self, board):
         start_col = raw_input("Choose start col (a-h): ")
         start_row = raw_input("Choose start row (1-8): ")
@@ -632,62 +711,33 @@ class ChessPlayerAgent(base.Agent):
         return ChessMove(start_col, start_row, end_col, end_row)
 
 class ChessRandomAgent(base.Agent):
-    def send_move(self, move, result):
-        pass
-
-    def _puts_in_check(self, depth, color, board, move):
-        other = ChessConstants.BLACK if color == ChessConstants.WHITE else ChessConstants.WHITE
-        for trans_move in board.translate_move(color, move):
-            board = board.result(color, trans_move)
-        stalemated = True
-        for move in self._get_moves(depth+1, other, board):
-            stalemated = False
-            if move.capture == 'K':
-                return True
-        if stalemated:
-            raise StalemateException("DRAW (STALEMATED)")
-        return False
-
-    def _filter_not_puts_in_check(self, depth, color, board, valid_moves):
-        mated = True
-        for move in valid_moves:
-            if not self._puts_in_check(depth, color, board, move):
-                mated = False
-                yield move
-        if mated:
-            other = ChessConstants.BLACK if color == ChessConstants.WHITE else ChessConstants.WHITE
-            raise MatedException(other)
-
-    def _assert_valid(self, color, board, valid_moves):
-        for move in valid_moves:
-            trans = board.translate_move(color, move)
-            if len(trans) == 0:
-                raise LogicException("Generated invalid move: "+str(move))
-            yield move
-
-    def _filter_promotions(self, valid_moves):
-        for move in valid_moves:
-            if move.promotion == '?':
-                for abbr in ChessConstants.PROMOTABLES:
-                    movep = copy.deepcopy(move)
-                    movep.promotion = abbr
-                    yield movep
-            else:
-                yield move
-
-    def _get_moves(self, depth, color, board):
-        core = self._filter_promotions(
-                board.valid_moves(color))
-        if depth < 1:
-            core = self._filter_not_puts_in_check(depth, color, board, core)
-        return core
-
     def get_move(self, board):
-        color = self.name # name, who, color... no consistency...
-        possible = list(self._get_moves(0, color, board))
+        possible = list(board.valid_moves(self.name))
         log.debug("Possible moves", possible)
         return random.choice(possible)
 
+class ChessHeuristic(base.Heuristic):
+    def evaluate(self, who, board):
+        other = ChessConstants.BLACK if who == ChessConstants.WHITE else ChessConstants.WHITE
+        #if ChessBoard._is_stalemated(0, who, board):
+        #    return base.HVal(0)
+        if ChessBoard._is_mated(0, who, board):
+            return base.HVal.neg_inf()
+        if ChessBoard._is_mated(0, other, board):
+            return base.HVal.pos_inf()
+
+        # count the value of our pieces vs the value of theirs
+        our_val = sum((ChessConstants.VALUE[piece.abbr] for piece, row, col in board.grid.get_piece_tuples(who)))
+        their_val = sum((ChessConstants.VALUE[piece.abbr] for piece, row, col in board.grid.get_piece_tuples(other)))
+        return base.HVal(our_val - their_val)
+
+class ChessMinMaxSearchAgent(base.MinMaxSearchAgent):
+    def __init__(self, name, other_name, heuristic, max_depth=-1):
+        base.MinMaxSearchAgent.__init__(self, name, other_name, heuristic, max_depth)
+    #def _valid_moves(self, who, board):
+    #    l = list(board.valid_moves(who))
+    #    random.shuffle(l)
+    #    return l
 
 class ChessPGNMoveParser(parse.BasePGNMoveParser):
 
@@ -736,12 +786,16 @@ def main(args):
         final_board, moves, winner = base.play(agents, board)
     elif mode == "random":
         board = ChessBoard.empty()
-        agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
+        #agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
+        #agents = [base.HeuristicAgent(ChessConstants.WHITE, ChessHeuristic()), ChessRandomAgent(ChessConstants.BLACK)]
+        agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=1), ChessRandomAgent(ChessConstants.BLACK)]
+        #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=ChessHeuristic(), max_depth=2)]
+
         final_board, moves, winner = base.play(agents, board)
         #if not "DRAW" in winner:
         #    raise base.WinnerException(winner)
-        if "STALEMATE" in winner:
-            raise StalemateException(winner)
+        #if "STALEMATE" in winner:
+        #    raise StalemateException(winner)
     elif mode == "manyrandom":
         while True:
             try:

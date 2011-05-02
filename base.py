@@ -77,7 +77,7 @@ class HVal(object):
         elif other.val == HVal.NEG_INF:
             return 1
         else:
-            return self.val.__cmp__(other.val)
+            return cmp(self.val, other.val)
 
     def __neg__(self):
         if self.val == HVal.POS_INF:
@@ -85,7 +85,7 @@ class HVal(object):
         elif self.val == HVal.NEG_INF:
             return HVal.pos_inf()
         else:
-            return HVal(self.val.__neg__())
+            return HVal(-self.val)
 
 class Heuristic(object):
     def evaluate(self, who, board):
@@ -96,10 +96,12 @@ class HeuristicAgent(Agent):
     def __init__(self, name, heuristic):
         Agent.__init__(self, name)
         self.heuristic = heuristic
+    def _valid_moves(self, who, board):
+        return board.valid_moves(who)
     def get_move(self, board):
         max_hval = None
         max_move = None
-        for move in board.valid_moves(self.name):
+        for move in self._valid_moves(self.name, board):
             hval = self.heuristic.evaluate(self.name, board.result(self.name, move))
             if max_hval is None or max_hval < hval:
                 max_hval = hval
@@ -118,7 +120,7 @@ class MinMaxSearchAgent(HeuristicAgent):
     def _get_move_sub(self, who, other, board, depth, max_depth, heuristic):
         max_hval = None
         max_move = None
-        for move in board.valid_moves(who):
+        for move in self._valid_moves(who, board):
             result = board.result(who, move)
             hval = None
 
@@ -139,9 +141,10 @@ class MinMaxSearchAgent(HeuristicAgent):
         return max_move, max_hval
 
 class WinnerException(Exception):
-    def __init__(self, winner):
-        Exception.__init__(self, "Winner: "+winner)
+    def __init__(self, winner, move=None):
+        Exception.__init__(self, "Winner: "+str(winner)+" Move: "+str(move))
         self.winner = winner
+        self.move = move
 
 def play(agents, board):
     print "welcome"
@@ -157,7 +160,6 @@ def play(agents, board):
             move = agent.get_move(board)
         except WinnerException, e:
             winner = e.winner
-            break
         trans_moves = board.translate_move(agent.name, move)
         if len(trans_moves) == 0:
             print "Invalid move"
