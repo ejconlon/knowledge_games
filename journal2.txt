@@ -4,11 +4,134 @@ Chess Journal 2
 5/1/2011
 
 THIS FILE IS AVAILABLE AT
-https://github.com/ejconlon/knowledge_games/raw/master/journal1.txt
+https://github.com/ejconlon/knowledge_games/raw/master/journal2.txt
+
+PLEASE VIEW IT THERE BECAUSE MOODLE WILL CUT OFF A LOT OF THIS :(
+
+- Chess playing
+- Chess move enumeration (and shortcomings)
+- Heuristic evaluation and search in TicTacToe 
+- Challenges in searching
+- Functional programming to the rescue?
+
+Chess playing
+=============
+I'm afraid I spent far more time programming during this period than playing actual chess (a few hours of playing), so my progress is pretty slow there.  I hope to remedy that next time, possibly taking a break from programming to read some chess books and play more games. I am satisfied that I am at a point where I can try to integrate new chess knowledge and experiment with different heuristics in my engine, which was a short-term goal of mine in this project.  Now it is incumbent upon me to gain that knowledge...
 
 
+Chess move enumeration (and shortcomings)
+=========================================
+The first step to making my computer play chess is having it know what it can do.  At the end of the last checkpoint, I was able to determine which moves were legal (except for en passant, which I still don't have in there, but more on that soon) without any regard to check or stalemate.  It turns out that moving in chess is a very complicated operation: first, it's not "context-free" - moves like en passant require that you know the last move, not just the current state of the board.  Second, because of Castling, you are not always moving just one piece.  And third, you have to search all of your opponents next moves to make sure that you're not putting your king in check.  I put the pieces in place for determining the allowability of en passant moves (setting the last move delta and turn last moved on) but have not added the logic to yield that move in a pawn's generation of moves. I have also not yet added castling to the King's generation of moves.  (In my opinion, these things are tricky, not-fun-or-interesting cascades of if-else that I can only implement so much of at a time...)  I'm not doing any sensible ordering of moves at this point, but I will need to for alpha-beta pruning.  I'm planning on ordering capture moves first, of course, but I would need a more sophisticated heuristic to order the rest - perhaps assigning weight to center control, moving pieces off the back rank, pushing the king's moves back (since I've seen my engine move kings with little regard to their preciousness).  For now, I simply randomly shuffle the moves before I evaluate them so I get some variety in openings, and so on.
 
-econlon:knowledge_games charolastra$ ~/apps/pypy/bin/pypy chessboard.py random 2ply.pgn
+
+Heuristic evaluation and search in Tic-Tac-Toe 
+==============================================
+As you know, I have implemented the silly game Tic-Tac-Toe in order to bootstrap new interfaces and test new algorithms.  I first created a simple heuristic value class that corresponds to the extended real numbers (R U {+infinity, -infinity}), where certain victory has infinite utility, and certain loss negative infinite utility.  My heuristic for evaluating a position was the same one found in the book (if I remember correctly): 2*X_2 + X_1 - 2*O_2 - O_1 for X, and its inverse for O.  It was then easy to use the "Negamax" form of the "Minimax" algorithm.
+
+Here's a game with only heuristic evaluation of the resulting board positions (depth 1 searching?). X is a heuristic agent, and O is a random agent:
+
+econlon:knowledge_games econlon$ ./play_ttt.py 1
+welcome
+It's X's turn
+ | | 
+ | | 
+ | | 
+Moving: <move row="1" col="1" />
+It's O's turn
+ | | 
+ |X| 
+ | | 
+Moving: <move row="2" col="2" />
+It's X's turn
+ | | 
+ |X| 
+ | |O
+Moving: <move row="0" col="0" />
+It's O's turn
+X| | 
+ |X| 
+ | |O
+Moving: <move row="1" col="2" />
+It's X's turn
+X| | 
+ |X|O
+ | |O
+Moving: <move row="0" col="2" />
+It's O's turn
+X| |X
+ |X|O
+ | |O
+Moving: <move row="2" col="0" />
+It's X's turn
+X| |X
+ |X|O
+O| |O
+Moving: <move row="0" col="1" />
+
+X|X|X
+ |X|O
+O| |O
+X won!
+
+As you can see, the heuristic leads X astray by playing _XO to XXO diagonally, a move which gets X nowhere strategically, but increases the heuristic.
+
+Here's an exciting game with depth 3 searching.  X is a minimaxing agent, and O is still a random agent:
+econlon:knowledge_games econlon$ ./play_ttt.py 1
+welcome
+It's X's turn
+ | | 
+ | | 
+ | | 
+Moving: <move row="1" col="1" />
+It's O's turn
+ | | 
+ |X| 
+ | | 
+Moving: <move row="1" col="0" />
+It's X's turn
+ | | 
+O|X| 
+ | | 
+Moving: <move row="0" col="0" />
+It's O's turn
+X| | 
+O|X| 
+ | | 
+Moving: <move row="2" col="0" />
+It's X's turn
+X| | 
+O|X| 
+O| | 
+Moving: <move row="2" col="2" />
+
+X| | 
+O|X| 
+O| |X
+X won!
+
+It's just not fair to poor, simple O.
+
+
+Challenges in searching
+=======================
+After I got minimax and heuristic agents working in TTT, my work applying them to chess could proceed.  However, it was not entirely straightforward. For some reason I had the "brilliant" idea to throw a "MatedException" in the bowels of a recursive get_moves function when it was the case that one player was checkmated.  This would result in the game (ostensibly correctly) ending in a victory for the other player, but it wouldn't let me play out the rest of the game, since the top level move generating function would be interrupted.  The silly software engineering decision that made exception-throwing necessary was one to make move generation a composition of functions that accept and generate a list of moves.  Some functions expanded pawn promotion, some pruned moves that put the king in check, and so on.  The solution would be to make move generation a composition of functions that accept and generate tuples of (move, game state) where check and stalemate are game states that would propagate "up" the tree in some way.  I was not able to address this issue this checkpoint, so you'll see the example game below end strangely, several moves before it is really obvious that it is a checkmate (if it is indeed a checkmate - this is software in progress, you see).
+
+
+Functional programming to the rescue?
+=====================================
+Let me say something that should have been totally obvious from the start: this engine is going to be SLOW.  There is a huge search space in the game of Chess, of course, and in the course of searching that space, you tend to generate a lot of objects and garbage.  There are two ways to maintain board state as you traverse the search tree (as I see): maintaining a mutable board that you undo changes to across every node of the tree, or maintaining an immutable board that you somehow copy across every node of the tree.  Because the former just sounds like a sure source of errors (and would be very inflexible when switching search types, board variables, etc.), I chose the latter.  My initial solution was to use Python's copy.deepcopy(object) function to create an entirely new copy of the board and all its metadata and pieces, but this was SO SLOW.  
+
+Taking a page from my current favorite CS book, Okasaki's Purely Functional Data Structures, and with inspiration from Clojure's PersistentVector, I decided to move to persistent data structures.  This meant two things: every Board object and subobject needed to have a "copy" factory method whose job was to provide a new instance with new reference variables to old data, and every data structure needed to return a modified copy of itself on any mutating operation.  The "result" method of the Board object (which applies a move to a board) would then copy a board, perform mutating operations on its persistent data structures, and reassign the board's reference variable to the mutated structures.  This really helped to speed things up.  
+
+If I were to start the project over again, I would give serious thought to doing it in Clojure or Haskell, since their persistent data structure support is excellent and they have strict (but useful) reference mutation semantics.  Types would also be handy.
+
+
+Example game
+============
+
+Here's an example game between two agents searching 3 levels deep (my move, your move, my move heuristically evaluated).  As I mentioned, you'll see it end before the mating move, which is something I plan to fix.  I also tried to mimic long algebraic notation but after trying several variations I could not get a simple notation that Shredder or other utilities would read.  That's another thing I plan to fix.
+
+econlon:knowledge_games econlon$ ./chessboard.py random 
 welcome
 It's W's turn
 TURNS: 0 TWOC: 0 SEEN: 0
@@ -31,7 +154,7 @@ LOST: W [] B []
 ---------------------------
  1|WR|WN|WB|WQ|WK|WB|WN|WR|
 ---------------------------
-Moving: <move start="g2" end="g3" />
+Moving: <move start="g1" end="f3" />
 It's B's turn
 TURNS: 1 TWOC: 1 SEEN: 1
 LOST: W [] B []
@@ -47,2110 +170,2065 @@ LOST: W [] B []
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |  |  |Wp|  |
+ 3|  |  |  |  |  |WN|  |  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|Wp|Wp|  |Wp|
+ 2|Wp|Wp|Wp|Wp|Wp|Wp|Wp|Wp|
 ---------------------------
- 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="g7" end="g6" />
+Moving: <move start="g8" end="h6" />
 It's W's turn
 TURNS: 2 TWOC: 2 SEEN: 1
 LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+ 8|BR|BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|Bp|Bp|Bp|Bp|Bp|Bp|  |Bp|
+ 7|Bp|Bp|Bp|Bp|Bp|Bp|Bp|Bp|
 ---------------------------
- 6|  |  |  |  |  |  |Bp|  |
+ 6|  |  |  |  |  |  |  |BN|
 ---------------------------
  5|  |  |  |  |  |  |  |  |
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |  |  |Wp|  |
+ 3|  |  |  |  |  |WN|  |  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|Wp|Wp|  |Wp|
+ 2|Wp|Wp|Wp|Wp|Wp|Wp|Wp|Wp|
 ---------------------------
- 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="e2" end="e3" />
+Moving: <move start="c2" end="c3" />
 It's B's turn
 TURNS: 3 TWOC: 3 SEEN: 1
 LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|BR|BN|BB|BQ|BK|BB|BN|BR|
+ 8|BR|BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|Bp|Bp|Bp|Bp|Bp|Bp|  |Bp|
+ 7|Bp|Bp|Bp|Bp|Bp|Bp|Bp|Bp|
 ---------------------------
- 6|  |  |  |  |  |  |Bp|  |
+ 6|  |  |  |  |  |  |  |BN|
 ---------------------------
  5|  |  |  |  |  |  |  |  |
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |Wp|  |Wp|  |
+ 3|  |  |Wp|  |  |WN|  |  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |Wp|
+ 2|Wp|Wp|  |Wp|Wp|Wp|Wp|Wp|
 ---------------------------
- 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="f8" end="g7" />
+Moving: <move start="h7" end="h5" />
 It's W's turn
 TURNS: 4 TWOC: 4 SEEN: 1
 LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|BR|
+ 8|BR|BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|Bp|Bp|Bp|Bp|Bp|Bp|BB|Bp|
+ 7|Bp|Bp|Bp|Bp|Bp|Bp|Bp|  |
 ---------------------------
- 6|  |  |  |  |  |  |Bp|  |
+ 6|  |  |  |  |  |  |  |BN|
 ---------------------------
- 5|  |  |  |  |  |  |  |  |
+ 5|  |  |  |  |  |  |  |Bp|
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |Wp|  |Wp|  |
+ 3|  |  |Wp|  |  |WN|  |  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |Wp|
+ 2|Wp|Wp|  |Wp|Wp|Wp|Wp|Wp|
 ---------------------------
- 1|WR|WN|WB|WQ|WK|WB|WN|WR|
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="g1" end="f3" />
+Moving: <move start="g2" end="g3" />
 It's B's turn
 TURNS: 5 TWOC: 5 SEEN: 1
 LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|BR|
+ 8|BR|BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|Bp|Bp|Bp|Bp|Bp|Bp|BB|Bp|
+ 7|Bp|Bp|Bp|Bp|Bp|Bp|Bp|  |
 ---------------------------
- 6|  |  |  |  |  |  |Bp|  |
+ 6|  |  |  |  |  |  |  |BN|
 ---------------------------
- 5|  |  |  |  |  |  |  |  |
+ 5|  |  |  |  |  |  |  |Bp|
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |Wp|WN|Wp|  |
+ 3|  |  |Wp|  |  |WN|Wp|  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |Wp|
+ 2|Wp|Wp|  |Wp|Wp|Wp|  |Wp|
 ---------------------------
  1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="h7" end="h6" />
+Moving: <move start="a7" end="a6" />
 It's W's turn
 TURNS: 6 TWOC: 6 SEEN: 1
 LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|BR|
+ 8|BR|BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|Bp|Bp|Bp|Bp|Bp|Bp|BB|  |
+ 7|  |Bp|Bp|Bp|Bp|Bp|Bp|  |
 ---------------------------
- 6|  |  |  |  |  |  |Bp|Bp|
+ 6|Bp|  |  |  |  |  |  |BN|
 ---------------------------
- 5|  |  |  |  |  |  |  |  |
+ 5|  |  |  |  |  |  |  |Bp|
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |Wp|WN|Wp|  |
+ 3|  |  |Wp|  |  |WN|Wp|  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |Wp|
+ 2|Wp|Wp|  |Wp|Wp|Wp|  |Wp|
 ---------------------------
  1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="f3" end="e5" />
+Moving: <move start="d2" end="d3" />
 It's B's turn
 TURNS: 7 TWOC: 7 SEEN: 1
 LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|BR|
+ 8|BR|BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|Bp|Bp|Bp|Bp|Bp|Bp|BB|  |
+ 7|  |Bp|Bp|Bp|Bp|Bp|Bp|  |
 ---------------------------
- 6|  |  |  |  |  |  |Bp|Bp|
+ 6|Bp|  |  |  |  |  |  |BN|
 ---------------------------
- 5|  |  |  |  |WN|  |  |  |
+ 5|  |  |  |  |  |  |  |Bp|
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |Wp|  |Wp|  |
+ 3|  |  |Wp|Wp|  |WN|Wp|  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |Wp|
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
 ---------------------------
  1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="f7" end="f6" />
+Moving: <move start="b7" end="b5" />
 It's W's turn
 TURNS: 8 TWOC: 8 SEEN: 1
 LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|BR|
+ 8|BR|BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|Bp|Bp|Bp|Bp|Bp|  |BB|  |
+ 7|  |  |Bp|Bp|Bp|Bp|Bp|  |
 ---------------------------
- 6|  |  |  |  |  |Bp|Bp|Bp|
+ 6|Bp|  |  |  |  |  |  |BN|
 ---------------------------
- 5|  |  |  |  |WN|  |  |  |
+ 5|  |Bp|  |  |  |  |  |Bp|
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |Wp|  |Wp|  |
+ 3|  |  |Wp|Wp|  |WN|Wp|  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |Wp|
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
 ---------------------------
  1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="e5" end="g6" capture="p" />
+Moving: <move start="f3" end="e5" />
 It's B's turn
-TURNS: 9 TWOC: 0 SEEN: 1
-LOST: W [] B [p]
+TURNS: 9 TWOC: 9 SEEN: 1
+LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|BR|
+ 8|BR|BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|Bp|Bp|Bp|Bp|Bp|  |BB|  |
+ 7|  |  |Bp|Bp|Bp|Bp|Bp|  |
 ---------------------------
- 6|  |  |  |  |  |Bp|WN|Bp|
+ 6|Bp|  |  |  |  |  |  |BN|
 ---------------------------
- 5|  |  |  |  |  |  |  |  |
+ 5|  |Bp|  |  |WN|  |  |Bp|
 ---------------------------
  4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|  |  |  |  |Wp|  |Wp|  |
+ 3|  |  |Wp|Wp|  |  |Wp|  |
 ---------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |Wp|
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
 ---------------------------
  1|WR|WN|WB|WQ|WK|WB|  |WR|
----------------------------
-Moving: <move start="h8" end="h7" />
-It's W's turn
-TURNS: 10 TWOC: 1 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|Bp|Bp|Bp|Bp|Bp|  |BB|BR|
----------------------------
- 6|  |  |  |  |  |Bp|WN|Bp|
----------------------------
- 5|  |  |  |  |  |  |  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|  |  |  |  |Wp|  |Wp|  |
----------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |Wp|
----------------------------
- 1|WR|WN|WB|WQ|WK|WB|  |WR|
----------------------------
-Moving: <move start="h2" end="h3" />
-It's B's turn
-TURNS: 11 TWOC: 2 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|Bp|Bp|Bp|Bp|Bp|  |BB|BR|
----------------------------
- 6|  |  |  |  |  |Bp|WN|Bp|
----------------------------
- 5|  |  |  |  |  |  |  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|  |  |  |  |Wp|  |Wp|Wp|
----------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |  |
----------------------------
- 1|WR|WN|WB|WQ|WK|WB|  |WR|
----------------------------
-Moving: <move start="e7" end="e6" />
-It's W's turn
-TURNS: 12 TWOC: 3 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|Bp|Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|  |  |  |  |Bp|Bp|WN|Bp|
----------------------------
- 5|  |  |  |  |  |  |  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|  |  |  |  |Wp|  |Wp|Wp|
----------------------------
- 2|Wp|Wp|Wp|Wp|  |Wp|  |  |
----------------------------
- 1|WR|WN|WB|WQ|WK|WB|  |WR|
----------------------------
-Moving: <move start="e1" end="e2" />
-It's B's turn
-TURNS: 13 TWOC: 4 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|Bp|Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|  |  |  |  |Bp|Bp|WN|Bp|
----------------------------
- 5|  |  |  |  |  |  |  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|  |  |  |  |Wp|  |Wp|Wp|
----------------------------
- 2|Wp|Wp|Wp|Wp|WK|Wp|  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|  |WR|
----------------------------
-Moving: <move start="a7" end="a6" />
-It's W's turn
-TURNS: 14 TWOC: 5 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|Bp|  |  |  |Bp|Bp|WN|Bp|
----------------------------
- 5|  |  |  |  |  |  |  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|  |  |  |  |Wp|  |Wp|Wp|
----------------------------
- 2|Wp|Wp|Wp|Wp|WK|Wp|  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|  |WR|
----------------------------
-Moving: <move start="a2" end="a3" />
-It's B's turn
-TURNS: 15 TWOC: 6 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|Bp|  |  |  |Bp|Bp|WN|Bp|
----------------------------
- 5|  |  |  |  |  |  |  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|Wp|  |  |  |Wp|  |Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|Wp|  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|  |WR|
----------------------------
-Moving: <move start="f6" end="f5" />
-It's W's turn
-TURNS: 16 TWOC: 7 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|Bp|  |  |  |Bp|  |WN|Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|Wp|  |  |  |Wp|  |Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|Wp|  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|  |WR|
----------------------------
-Moving: <move start="h1" end="g1" />
-It's B's turn
-TURNS: 17 TWOC: 8 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|Bp|  |  |  |Bp|  |WN|Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|Wp|  |  |  |Wp|  |Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|Wp|  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="g8" end="f6" />
-It's W's turn
-TURNS: 18 TWOC: 9 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |  |  |
----------------------------
- 7|  |Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|Bp|  |  |  |Bp|BN|WN|Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|Wp|  |  |  |Wp|  |Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|Wp|  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="f2" end="f3" />
-It's B's turn
-TURNS: 19 TWOC: 10 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |  |  |
----------------------------
- 7|  |Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|Bp|  |  |  |Bp|BN|WN|Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|Wp|  |  |  |Wp|Wp|Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="f6" end="g8" />
-It's W's turn
-TURNS: 20 TWOC: 11 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|Bp|  |  |  |Bp|  |WN|Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|Wp|  |  |  |Wp|Wp|Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="e2" end="d3" />
-It's B's turn
-TURNS: 21 TWOC: 12 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|Bp|  |  |BB|BR|
----------------------------
- 6|Bp|  |  |  |Bp|  |WN|Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|Wp|  |  |WK|Wp|Wp|Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="d7" end="d6" />
-It's W's turn
-TURNS: 22 TWOC: 13 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|Bp|  |WN|Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |  |  |  |
----------------------------
- 3|Wp|  |  |WK|Wp|Wp|Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="g6" end="f4" />
-It's B's turn
-TURNS: 23 TWOC: 14 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|Bp|  |  |Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |WN|  |  |
----------------------------
- 3|Wp|  |  |WK|Wp|Wp|Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="e6" end="e5" />
-It's W's turn
-TURNS: 24 TWOC: 15 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|  |  |  |Bp|
----------------------------
- 5|  |  |  |  |Bp|Bp|  |  |
----------------------------
- 4|  |  |  |  |  |WN|  |  |
----------------------------
- 3|Wp|  |  |WK|Wp|Wp|Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="d3" end="e2" />
-It's B's turn
-TURNS: 25 TWOC: 16 SEEN: 1
-LOST: W [] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|  |  |  |Bp|
----------------------------
- 5|  |  |  |  |Bp|Bp|  |  |
----------------------------
- 4|  |  |  |  |  |WN|  |  |
----------------------------
- 3|Wp|  |  |  |Wp|Wp|Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="e5" end="f4" capture="N" />
-It's W's turn
-TURNS: 26 TWOC: 0 SEEN: 1
-LOST: W [N] B [p]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|  |  |  |Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Bp|  |  |
----------------------------
- 3|Wp|  |  |  |Wp|Wp|Wp|Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="g3" end="f4" capture="p" />
-It's B's turn
-TURNS: 27 TWOC: 0 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|  |  |  |Bp|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |  |Wp|Wp|  |Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="h6" end="h5" />
-It's W's turn
-TURNS: 28 TWOC: 1 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |Bp|
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |  |Wp|Wp|  |Wp|
----------------------------
- 2|  |Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|WR|WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="a1" end="a2" />
-It's B's turn
-TURNS: 29 TWOC: 2 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |Bp|
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|  |WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="h5" end="h4" />
-It's W's turn
-TURNS: 30 TWOC: 3 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|  |WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="e2" end="d3" />
-It's B's turn
-TURNS: 31 TWOC: 4 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|Bp|  |  |  |BB|BR|
----------------------------
- 6|Bp|  |  |Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |  |WK|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|  |WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="c7" end="c6" />
-It's W's turn
-TURNS: 32 TWOC: 5 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|  |  |  |  |BB|BR|
----------------------------
- 6|Bp|  |Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |  |WK|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|  |WN|WB|WQ|  |WB|WR|  |
----------------------------
-Moving: <move start="g1" end="g2" />
-It's B's turn
-TURNS: 33 TWOC: 6 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |Bp|  |  |  |  |BB|BR|
----------------------------
- 6|Bp|  |Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |  |WK|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |WR|  |
----------------------------
- 1|  |WN|WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="b7" end="b6" />
-It's W's turn
-TURNS: 34 TWOC: 7 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |  |  |  |  |  |BB|BR|
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |  |WK|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |WR|  |
----------------------------
- 1|  |WN|WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="b1" end="c3" />
-It's B's turn
-TURNS: 35 TWOC: 8 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|  |
----------------------------
- 7|  |  |  |  |  |  |BB|BR|
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|WK|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |WR|  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="h7" end="h8" />
-It's W's turn
-TURNS: 36 TWOC: 9 SEEN: 1
-LOST: W [N] B [pp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|BR|
----------------------------
- 7|  |  |  |  |  |  |BB|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|WK|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |WR|  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="g2" end="g7" capture="B" />
-It's B's turn
-TURNS: 37 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|BB|BQ|BK|  |BN|BR|
----------------------------
- 7|  |  |  |  |  |  |WR|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|WK|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="c8" end="d7" />
-It's W's turn
-TURNS: 38 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|BK|  |BN|BR|
----------------------------
- 7|  |  |  |BB|  |  |WR|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|WK|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="d3" end="e2" />
-It's B's turn
-TURNS: 39 TWOC: 2 SEEN: 1
-LOST: W [N] B [ppB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|BK|  |BN|BR|
----------------------------
- 7|  |  |  |BB|  |  |WR|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="g8" end="e7" />
-It's W's turn
-TURNS: 40 TWOC: 3 SEEN: 1
-LOST: W [N] B [ppB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|BK|  |  |BR|
----------------------------
- 7|  |  |  |BB|BN|  |WR|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|WK|  |  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="e2" end="e1" />
-It's B's turn
-TURNS: 41 TWOC: 4 SEEN: 1
-LOST: W [N] B [ppB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|BK|  |  |BR|
----------------------------
- 7|  |  |  |BB|BN|  |WR|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="e7" end="g8" />
-It's W's turn
-TURNS: 42 TWOC: 5 SEEN: 1
-LOST: W [N] B [ppB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|BK|  |BN|BR|
----------------------------
- 7|  |  |  |BB|  |  |WR|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|Wp|  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="d2" end="d3" />
-It's B's turn
-TURNS: 43 TWOC: 6 SEEN: 1
-LOST: W [N] B [ppB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|BK|  |BN|BR|
----------------------------
- 7|  |  |  |BB|  |  |WR|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="h8" end="h6" />
-It's W's turn
-TURNS: 44 TWOC: 7 SEEN: 1
-LOST: W [N] B [ppB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|BK|  |BN|  |
----------------------------
- 7|  |  |  |BB|  |  |WR|  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |BR|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="g7" end="g8" capture="N" />
-It's B's turn
-TURNS: 45 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|BK|  |WR|  |
----------------------------
- 7|  |  |  |BB|  |  |  |  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |BR|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="e8" end="f7" />
-It's W's turn
-TURNS: 46 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |BQ|  |  |WR|  |
----------------------------
- 7|  |  |  |BB|  |BK|  |  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |BR|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="g8" end="d8" capture="Q" />
-It's B's turn
-TURNS: 47 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppBNQ]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |WR|  |  |  |  |
----------------------------
- 7|  |  |  |BB|  |BK|  |  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |BR|
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="h6" end="h8" />
-It's W's turn
-TURNS: 48 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppBNQ]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |WR|  |  |  |BR|
----------------------------
- 7|  |  |  |BB|  |BK|  |  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="d8" end="h8" capture="R" />
-It's B's turn
-TURNS: 49 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppBNQR]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |  |  |  |  |WR|
----------------------------
- 7|  |  |  |BB|  |BK|  |  |
----------------------------
- 6|Bp|Bp|Bp|Bp|  |  |  |  |
----------------------------
- 5|  |  |  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="b6" end="b5" />
-It's W's turn
-TURNS: 50 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppBNQR]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |  |  |  |  |WR|
----------------------------
- 7|  |  |  |BB|  |BK|  |  |
----------------------------
- 6|Bp|  |Bp|Bp|  |  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |Bp|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="h8" end="h4" capture="p" />
-It's B's turn
-TURNS: 51 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppBNQRp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|BR|BN|  |  |  |  |  |  |
----------------------------
- 7|  |  |  |BB|  |BK|  |  |
----------------------------
- 6|Bp|  |Bp|Bp|  |  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |WR|
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
 ---------------------------
 Moving: <move start="a8" end="a7" />
 It's W's turn
-TURNS: 52 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppBNQRp]
+TURNS: 10 TWOC: 10 SEEN: 1
+LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |BN|  |  |  |  |  |  |
+ 8|  |BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|BR|  |  |BB|  |BK|  |  |
+ 7|BR|  |Bp|Bp|Bp|Bp|Bp|  |
 ---------------------------
- 6|Bp|  |Bp|Bp|  |  |  |  |
+ 6|Bp|  |  |  |  |  |  |BN|
 ---------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
+ 5|  |Bp|  |  |WN|  |  |Bp|
 ---------------------------
- 4|  |  |  |  |  |Wp|  |WR|
+ 4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
+ 3|  |  |Wp|Wp|  |  |Wp|  |
 ---------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
+ 2|Wp|Wp|  |  |Wp|Wp|  |Wp|
 ---------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="h4" end="h8" />
-It's B's turn
-TURNS: 53 TWOC: 2 SEEN: 1
-LOST: W [N] B [ppBNQRp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |BN|  |  |  |  |  |WR|
----------------------------
- 7|BR|  |  |BB|  |BK|  |  |
----------------------------
- 6|Bp|  |Bp|Bp|  |  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="d7" end="c8" />
-It's W's turn
-TURNS: 54 TWOC: 3 SEEN: 1
-LOST: W [N] B [ppBNQRp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |BN|BB|  |  |  |  |WR|
----------------------------
- 7|BR|  |  |  |  |BK|  |  |
----------------------------
- 6|Bp|  |Bp|Bp|  |  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="h8" end="c8" capture="B" />
-It's B's turn
-TURNS: 55 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppBNQRpB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |BN|WR|  |  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |BK|  |  |
----------------------------
- 6|Bp|  |Bp|Bp|  |  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="f7" end="e6" />
-It's W's turn
-TURNS: 56 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppBNQRpB]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |BN|WR|  |  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |  |  |  |
----------------------------
- 6|Bp|  |Bp|Bp|BK|  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="c8" end="b8" capture="N" />
-It's B's turn
-TURNS: 57 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |WR|  |  |  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |  |  |  |
----------------------------
- 6|Bp|  |Bp|Bp|BK|  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="a7" end="e7" />
-It's W's turn
-TURNS: 58 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |WR|  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |BR|  |  |  |
----------------------------
- 6|Bp|  |Bp|Bp|BK|  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |WN|Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |  |  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="c3" end="e2" />
-It's B's turn
-TURNS: 59 TWOC: 2 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |WR|  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |BR|  |  |  |
----------------------------
- 6|Bp|  |Bp|Bp|BK|  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="e7" end="a7" />
-It's W's turn
-TURNS: 60 TWOC: 3 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |WR|  |  |  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |  |  |  |
----------------------------
- 6|Bp|  |Bp|Bp|BK|  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="b8" end="g8" />
-It's B's turn
-TURNS: 61 TWOC: 4 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |WR|  |
----------------------------
- 7|BR|  |  |  |  |  |  |  |
----------------------------
- 6|Bp|  |Bp|Bp|BK|  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="a7" end="d7" />
-It's W's turn
-TURNS: 62 TWOC: 5 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |WR|  |
----------------------------
- 7|  |  |  |BR|  |  |  |  |
----------------------------
- 6|Bp|  |Bp|Bp|BK|  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="g8" end="h8" />
-It's B's turn
-TURNS: 63 TWOC: 6 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |WR|
----------------------------
- 7|  |  |  |BR|  |  |  |  |
----------------------------
- 6|Bp|  |Bp|Bp|BK|  |  |  |
----------------------------
- 5|  |Bp|  |  |  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="d6" end="d5" />
-It's W's turn
-TURNS: 64 TWOC: 7 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |WR|
----------------------------
- 7|  |  |  |BR|  |  |  |  |
----------------------------
- 6|Bp|  |Bp|  |BK|  |  |  |
----------------------------
- 5|  |Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|WQ|WK|WB|  |  |
----------------------------
-Moving: <move start="e1" end="f2" />
-It's B's turn
-TURNS: 65 TWOC: 8 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |WR|
----------------------------
- 7|  |  |  |BR|  |  |  |  |
----------------------------
- 6|Bp|  |Bp|  |BK|  |  |  |
----------------------------
- 5|  |Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="e6" end="f7" />
-It's W's turn
-TURNS: 66 TWOC: 9 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |WR|
----------------------------
- 7|  |  |  |BR|  |BK|  |  |
----------------------------
- 6|Bp|  |Bp|  |  |  |  |  |
----------------------------
- 5|  |Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |  |  |Wp|  |  |
----------------------------
- 3|Wp|  |  |Wp|Wp|Wp|  |Wp|
----------------------------
- 2|WR|Wp|Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
 Moving: <move start="b2" end="b3" />
 It's B's turn
-TURNS: 67 TWOC: 10 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
+TURNS: 11 TWOC: 11 SEEN: 1
+LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |  |WR|
+ 8|  |BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|  |  |  |BR|  |BK|  |  |
+ 7|BR|  |Bp|Bp|Bp|Bp|Bp|  |
 ---------------------------
- 6|Bp|  |Bp|  |  |  |  |  |
+ 6|Bp|  |  |  |  |  |  |BN|
 ---------------------------
- 5|  |Bp|  |Bp|  |Bp|  |  |
+ 5|  |Bp|  |  |WN|  |  |Bp|
 ---------------------------
- 4|  |  |  |  |  |Wp|  |  |
+ 4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|Wp|  |Wp|Wp|Wp|  |Wp|
+ 3|  |Wp|Wp|Wp|  |  |Wp|  |
 ---------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
+ 2|Wp|  |  |  |Wp|Wp|  |Wp|
 ---------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="d7" end="a7" />
+Moving: <move start="f7" end="f6" />
 It's W's turn
-TURNS: 68 TWOC: 11 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
+TURNS: 12 TWOC: 12 SEEN: 1
+LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |  |WR|
+ 8|  |BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|BR|  |  |  |  |BK|  |  |
+ 7|BR|  |Bp|Bp|Bp|  |Bp|  |
 ---------------------------
- 6|Bp|  |Bp|  |  |  |  |  |
+ 6|Bp|  |  |  |  |Bp|  |BN|
 ---------------------------
- 5|  |Bp|  |Bp|  |Bp|  |  |
+ 5|  |Bp|  |  |WN|  |  |Bp|
 ---------------------------
- 4|  |  |  |  |  |Wp|  |  |
+ 4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|Wp|  |Wp|Wp|Wp|  |Wp|
+ 3|  |Wp|Wp|Wp|  |  |Wp|  |
 ---------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
+ 2|Wp|  |  |  |Wp|Wp|  |Wp|
 ---------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
-Moving: <move start="d3" end="d4" />
+Moving: <move start="e5" end="g6" />
 It's B's turn
-TURNS: 69 TWOC: 12 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
+TURNS: 13 TWOC: 13 SEEN: 1
+LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |  |WR|
+ 8|  |BN|BB|BQ|BK|BB|  |BR|
 ---------------------------
- 7|BR|  |  |  |  |BK|  |  |
+ 7|BR|  |Bp|Bp|Bp|  |Bp|  |
 ---------------------------
- 6|Bp|  |Bp|  |  |  |  |  |
+ 6|Bp|  |  |  |  |Bp|WN|BN|
 ---------------------------
- 5|  |Bp|  |Bp|  |Bp|  |  |
+ 5|  |Bp|  |  |  |  |  |Bp|
 ---------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
+ 4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
+ 3|  |Wp|Wp|Wp|  |  |Wp|  |
 ---------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
+ 2|Wp|  |  |  |Wp|Wp|  |Wp|
 ---------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="f7" end="g7" />
-It's W's turn
-TURNS: 70 TWOC: 13 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |WR|
----------------------------
- 7|BR|  |  |  |  |  |BK|  |
----------------------------
- 6|Bp|  |Bp|  |  |  |  |  |
----------------------------
- 5|  |Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="h8" end="d8" />
-It's B's turn
-TURNS: 71 TWOC: 14 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |WR|  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |  |BK|  |
----------------------------
- 6|Bp|  |Bp|  |  |  |  |  |
----------------------------
- 5|  |Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="a6" end="a5" />
-It's W's turn
-TURNS: 72 TWOC: 15 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |WR|  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |  |BK|  |
----------------------------
- 6|  |  |Bp|  |  |  |  |  |
----------------------------
- 5|Bp|Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|WQ|  |WB|  |  |
----------------------------
-Moving: <move start="d1" end="d2" />
-It's B's turn
-TURNS: 73 TWOC: 16 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |WR|  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |  |BK|  |
----------------------------
- 6|  |  |Bp|  |  |  |  |  |
----------------------------
- 5|Bp|Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|WQ|WN|WK|  |  |
----------------------------
- 1|  |  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="g7" end="h6" />
-It's W's turn
-TURNS: 74 TWOC: 17 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |WR|  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |  |  |  |
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|Bp|Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|WQ|WN|WK|  |  |
----------------------------
- 1|  |  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="d8" end="b8" />
-It's B's turn
-TURNS: 75 TWOC: 18 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |WR|  |  |  |  |  |  |
----------------------------
- 7|BR|  |  |  |  |  |  |  |
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|Bp|Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|WQ|WN|WK|  |  |
----------------------------
- 1|  |  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="a7" end="h7" />
-It's W's turn
-TURNS: 76 TWOC: 19 SEEN: 1
-LOST: W [N] B [ppBNQRpBN]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |WR|  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |BR|
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|Bp|Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|WQ|WN|WK|  |  |
----------------------------
- 1|  |  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="d2" end="a5" capture="p" />
-It's B's turn
-TURNS: 77 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppBNQRpBNp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |WR|  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |BR|
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|Bp|  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="b5" end="b4" />
-It's W's turn
-TURNS: 78 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppBNQRpBNp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |WR|  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |BR|
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |Bp|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="b8" end="b4" capture="p" />
-It's B's turn
-TURNS: 79 TWOC: 0 SEEN: 1
-LOST: W [N] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |BR|
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |WR|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="h7" end="h8" />
-It's W's turn
-TURNS: 80 TWOC: 1 SEEN: 1
-LOST: W [N] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |BR|
----------------------------
- 7|  |  |  |  |  |  |  |  |
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |WR|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|WK|  |  |
----------------------------
- 1|  |  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="a2" end="a1" />
-It's B's turn
-TURNS: 81 TWOC: 2 SEEN: 1
-LOST: W [N] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |BR|
----------------------------
- 7|  |  |  |  |  |  |  |  |
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |WR|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|  |  |Wp|  |WN|WK|  |  |
----------------------------
- 1|WR|  |WB|  |  |WB|  |  |
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
 Moving: <move start="h8" end="g8" />
 It's W's turn
-TURNS: 82 TWOC: 3 SEEN: 1
-LOST: W [N] B [ppBNQRpBNpp]
+TURNS: 14 TWOC: 14 SEEN: 1
+LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |BR|  |
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
 ---------------------------
- 7|  |  |  |  |  |  |  |  |
+ 7|BR|  |Bp|Bp|Bp|  |Bp|  |
 ---------------------------
- 6|  |  |Bp|  |  |  |  |BK|
+ 6|Bp|  |  |  |  |Bp|WN|BN|
 ---------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
+ 5|  |Bp|  |  |  |  |  |Bp|
 ---------------------------
- 4|  |WR|  |Wp|  |Wp|  |  |
+ 4|  |  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
+ 3|  |Wp|Wp|Wp|  |  |Wp|  |
 ---------------------------
- 2|  |  |Wp|  |WN|WK|  |  |
+ 2|Wp|  |  |  |Wp|Wp|  |Wp|
 ---------------------------
- 1|WR|  |WB|  |  |WB|  |  |
----------------------------
-Moving: <move start="f2" end="e1" />
-It's B's turn
-TURNS: 83 TWOC: 4 SEEN: 1
-LOST: W [N] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |BR|  |
----------------------------
- 7|  |  |  |  |  |  |  |  |
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |WR|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|  |  |Wp|  |WN|  |  |  |
----------------------------
- 1|WR|  |WB|  |WK|WB|  |  |
----------------------------
-Moving: <move start="g8" end="e8" />
-It's W's turn
-TURNS: 84 TWOC: 5 SEEN: 1
-LOST: W [N] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |BR|  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |  |
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |WR|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|  |  |Wp|  |WN|  |  |  |
----------------------------
- 1|WR|  |WB|  |WK|WB|  |  |
----------------------------
-Moving: <move start="a1" end="a2" />
-It's B's turn
-TURNS: 85 TWOC: 6 SEEN: 1
-LOST: W [N] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |BR|  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |  |
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |WR|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |Wp|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|  |WK|WB|  |  |
----------------------------
-Moving: <move start="e8" end="e3" capture="p" />
-It's W's turn
-TURNS: 86 TWOC: 0 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |  |
----------------------------
- 6|  |  |Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |WR|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |BR|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|  |WK|WB|  |  |
----------------------------
-Moving: <move start="b4" end="b6" />
-It's B's turn
-TURNS: 87 TWOC: 1 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |  |
----------------------------
- 6|  |WR|Bp|  |  |  |  |BK|
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |BR|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|  |WK|WB|  |  |
----------------------------
-Moving: <move start="h6" end="h5" />
-It's W's turn
-TURNS: 88 TWOC: 2 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |  |  |  |  |
----------------------------
- 6|  |WR|Bp|  |  |  |  |  |
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |BK|
----------------------------
- 4|  |  |  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|Wp|  |  |BR|Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|  |WK|WB|  |  |
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
 ---------------------------
 Moving: <move start="b3" end="b4" />
 It's B's turn
-TURNS: 89 TWOC: 3 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNpp]
+TURNS: 15 TWOC: 15 SEEN: 1
+LOST: W [] B []
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |  |  |
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
+---------------------------
+ 7|BR|  |Bp|Bp|Bp|  |Bp|  |
+---------------------------
+ 6|Bp|  |  |  |  |Bp|WN|BN|
+---------------------------
+ 5|  |Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |Wp|  |  |  |  |  |  |
+---------------------------
+ 3|  |  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="c7" end="c6" />
+It's W's turn
+TURNS: 16 TWOC: 16 SEEN: 1
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
+---------------------------
+ 7|BR|  |  |Bp|Bp|  |Bp|  |
+---------------------------
+ 6|Bp|  |Bp|  |  |Bp|WN|BN|
+---------------------------
+ 5|  |Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |Wp|  |  |  |  |  |  |
+---------------------------
+ 3|  |  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|WB|WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="c1" end="a3" />
+It's B's turn
+TURNS: 17 TWOC: 17 SEEN: 1
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
+---------------------------
+ 7|BR|  |  |Bp|Bp|  |Bp|  |
+---------------------------
+ 6|Bp|  |Bp|  |  |Bp|WN|BN|
+---------------------------
+ 5|  |Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |Wp|  |  |  |  |  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="h6" end="f7" />
+It's W's turn
+TURNS: 18 TWOC: 18 SEEN: 1
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
+---------------------------
+ 7|BR|  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|Bp|  |Bp|  |  |Bp|WN|  |
+---------------------------
+ 5|  |Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |Wp|  |  |  |  |  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|Wp|  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="f2" end="f4" />
+It's B's turn
+TURNS: 19 TWOC: 19 SEEN: 1
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
+---------------------------
+ 7|BR|  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|Bp|  |Bp|  |  |Bp|WN|  |
+---------------------------
+ 5|  |Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |Wp|  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="a6" end="a5" />
+It's W's turn
+TURNS: 20 TWOC: 20 SEEN: 1
+LOST: W [] B []
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
+---------------------------
+ 7|BR|  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|WN|  |
+---------------------------
+ 5|Bp|Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |Wp|  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="b4" end="a5" capture="p" />
+It's B's turn
+TURNS: 21 TWOC: 0 SEEN: 1
+LOST: W [] B [p]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
+---------------------------
+ 7|BR|  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|WN|  |
+---------------------------
+ 5|Wp|Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |  |  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="a7" end="a5" capture="p" />
+It's W's turn
+TURNS: 22 TWOC: 0 SEEN: 1
+LOST: W [p] B [p]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BB|BR|  |
+---------------------------
+ 7|  |  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|WN|  |
+---------------------------
+ 5|BR|Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |  |  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="g6" end="f8" capture="B" />
+It's B's turn
+TURNS: 23 TWOC: 0 SEEN: 1
+LOST: W [p] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|WN|BR|  |
+---------------------------
+ 7|  |  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |  |  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="g8" end="f8" capture="N" />
+It's W's turn
+TURNS: 24 TWOC: 0 SEEN: 1
+LOST: W [pN] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|  |  |  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|Wp|  |  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="a2" end="a4" />
+It's B's turn
+TURNS: 25 TWOC: 1 SEEN: 1
+LOST: W [pN] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|Bp|  |  |  |  |  |Bp|
+---------------------------
+ 4|Wp|  |  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|  |  |  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="b5" end="a4" capture="p" />
+It's W's turn
+TURNS: 26 TWOC: 0 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|  |  |Wp|  |
+---------------------------
+ 2|  |  |  |  |Wp|  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="e2" end="e3" />
+It's B's turn
+TURNS: 27 TWOC: 1 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|Bp|BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="e7" end="e6" />
+It's W's turn
+TURNS: 28 TWOC: 2 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|  |BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |  |
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |  |  |  |Wp|
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="h2" end="h4" />
+It's B's turn
+TURNS: 29 TWOC: 3 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|  |BN|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="b8" end="a6" />
+It's W's turn
+TURNS: 30 TWOC: 4 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|  |BN|Bp|  |
+---------------------------
+ 6|BN|  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="e1" end="e2" />
+It's B's turn
+TURNS: 31 TWOC: 5 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|  |BN|Bp|  |
+---------------------------
+ 6|BN|  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |WK|  |  |  |
+---------------------------
+ 1|WR|WN|  |WQ|  |WB|  |WR|
+---------------------------
+Moving: <move start="f7" end="h6" />
+It's W's turn
+TURNS: 32 TWOC: 6 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|  |  |Bp|  |
+---------------------------
+ 6|BN|  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |WK|  |  |  |
+---------------------------
+ 1|WR|WN|  |WQ|  |WB|  |WR|
+---------------------------
+Moving: <move start="e2" end="e1" />
+It's B's turn
+TURNS: 33 TWOC: 7 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |  |BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|  |  |Bp|  |
+---------------------------
+ 6|BN|  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="a6" end="b8" />
+It's W's turn
+TURNS: 34 TWOC: 8 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|WR|WN|  |WQ|WK|WB|  |WR|
+---------------------------
+Moving: <move start="d1" end="d2" />
+It's B's turn
+TURNS: 35 TWOC: 9 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|  |  |  |Bp|  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |WQ|  |  |  |  |
+---------------------------
+ 1|WR|WN|  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="a5" end="a7" />
+It's W's turn
+TURNS: 36 TWOC: 10 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|BR|  |  |Bp|  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |WQ|  |  |  |  |
+---------------------------
+ 1|WR|WN|  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="a1" end="a2" />
+It's B's turn
+TURNS: 37 TWOC: 11 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|BR|  |  |
+---------------------------
+ 7|BR|  |  |Bp|  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="d8" end="e7" />
+It's W's turn
+TURNS: 38 TWOC: 12 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|BR|  |  |
+---------------------------
+ 7|BR|  |  |Bp|BQ|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="h1" end="g1" />
+It's B's turn
+TURNS: 39 TWOC: 13 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|BR|  |  |
+---------------------------
+ 7|BR|  |  |Bp|BQ|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="f8" end="f7" />
+It's W's turn
+TURNS: 40 TWOC: 14 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|BR|  |  |Bp|BQ|BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |Wp|Wp|Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="c3" end="c4" />
+It's B's turn
+TURNS: 41 TWOC: 15 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|BR|  |  |Bp|BQ|BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |Wp|  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |Wp|Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="e7" end="d8" />
+It's W's turn
+TURNS: 42 TWOC: 16 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|  |  |  |
+---------------------------
+ 7|BR|  |  |Bp|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |Wp|  |  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |Wp|Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="d3" end="d4" />
+It's B's turn
+TURNS: 43 TWOC: 17 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|BQ|BK|  |  |  |
+---------------------------
+ 7|BR|  |  |Bp|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |Wp|Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="a7" end="a8" />
+It's W's turn
+TURNS: 44 TWOC: 18 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|  |  |  |
+---------------------------
+ 7|  |  |  |Bp|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |Wp|Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="d2" end="e2" />
+It's B's turn
+TURNS: 45 TWOC: 19 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|BQ|BK|  |  |  |
+---------------------------
+ 7|  |  |  |Bp|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |Wp|Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |  |WQ|  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="d8" end="e7" />
+It's W's turn
+TURNS: 46 TWOC: 20 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |Bp|BQ|BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |  |  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |Wp|Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |  |WQ|  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="c4" end="c5" />
+It's B's turn
+TURNS: 47 TWOC: 21 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |Bp|BQ|BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |Wp|  |  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |  |WQ|  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="d7" end="d5" />
+It's W's turn
+TURNS: 48 TWOC: 22 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BQ|BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|WR|  |  |  |WQ|  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="a2" end="c2" />
+It's B's turn
+TURNS: 49 TWOC: 23 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BQ|BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |WR|  |WQ|  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="e7" end="d7" />
+It's W's turn
+TURNS: 50 TWOC: 24 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |BQ|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |WR|  |WQ|  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|WR|  |
+---------------------------
+Moving: <move start="g1" end="h1" />
+It's B's turn
+TURNS: 51 TWOC: 25 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |BQ|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |BN|
+---------------------------
+ 5|  |  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |WR|  |WQ|  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="h6" end="g4" />
+It's W's turn
+TURNS: 52 TWOC: 26 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |BQ|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|  |  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |  |  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |WR|  |WQ|  |  |  |
+---------------------------
+ 1|  |WN|  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="b1" end="c3" />
+It's B's turn
+TURNS: 53 TWOC: 27 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|BR|BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |BQ|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|  |  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |WR|  |WQ|  |  |  |
+---------------------------
+ 1|  |  |  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="a8" end="a5" />
+It's W's turn
+TURNS: 54 TWOC: 28 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |BQ|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |WR|  |WQ|  |  |  |
+---------------------------
+ 1|  |  |  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="c2" end="c1" />
+It's B's turn
+TURNS: 55 TWOC: 29 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |BQ|  |BR|Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |WQ|  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="f7" end="e7" />
+It's W's turn
+TURNS: 56 TWOC: 30 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |BQ|BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |WQ|  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="c1" end="c2" />
+It's B's turn
+TURNS: 57 TWOC: 31 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |BQ|BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |WR|  |WQ|  |  |  |
+---------------------------
+ 1|  |  |  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="d7" end="b7" />
+It's W's turn
+TURNS: 58 TWOC: 32 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |BQ|  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |WR|  |WQ|  |  |  |
+---------------------------
+ 1|  |  |  |  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="c2" end="c1" />
+It's B's turn
+TURNS: 59 TWOC: 33 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |BQ|  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |WQ|  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="b7" end="b4" />
+It's W's turn
+TURNS: 60 TWOC: 34 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|BQ|  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |  |WQ|  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="e2" end="d2" />
+It's B's turn
+TURNS: 61 TWOC: 35 SEEN: 1
+LOST: W [pNp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|BQ|  |Wp|  |Wp|BN|Wp|
+---------------------------
+ 3|WB|  |WN|  |Wp|  |Wp|  |
+---------------------------
+ 2|  |  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="g4" end="e3" capture="p" />
+It's W's turn
+TURNS: 62 TWOC: 0 SEEN: 1
+LOST: W [pNpp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|BQ|  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |WN|  |BN|  |Wp|  |
+---------------------------
+ 2|  |  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|WB|  |WR|
+---------------------------
+Moving: <move start="e1" end="f2" />
+It's B's turn
+TURNS: 63 TWOC: 1 SEEN: 1
+LOST: W [pNpp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|BQ|  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |WN|  |BN|  |Wp|  |
+---------------------------
+ 2|  |  |  |WQ|  |WK|  |  |
+---------------------------
+ 1|  |  |WR|  |  |WB|  |WR|
+---------------------------
+Moving: <move start="e3" end="f1" capture="B" />
+It's W's turn
+TURNS: 64 TWOC: 0 SEEN: 1
+LOST: W [pNppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|BQ|  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |WN|  |  |  |Wp|  |
+---------------------------
+ 2|  |  |  |WQ|  |WK|  |  |
+---------------------------
+ 1|  |  |WR|  |  |BN|  |WR|
+---------------------------
+Moving: <move start="f2" end="e1" />
+It's B's turn
+TURNS: 65 TWOC: 1 SEEN: 1
+LOST: W [pNppB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|BQ|  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |WN|  |  |  |Wp|  |
+---------------------------
+ 2|  |  |  |WQ|  |  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|BN|  |WR|
+---------------------------
+Moving: <move start="f1" end="d2" capture="Q" />
+It's W's turn
+TURNS: 66 TWOC: 0 SEEN: 1
+LOST: W [pNppBQ] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|BQ|  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |WN|  |  |  |Wp|  |
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|  |  |WR|
+---------------------------
+Moving: <move start="c3" end="d1" />
+It's B's turn
+TURNS: 67 TWOC: 1 SEEN: 1
+LOST: W [pNppBQ] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|BQ|  |Wp|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |  |  |Wp|  |
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|WN|WK|  |  |WR|
+---------------------------
+Moving: <move start="b4" end="d4" capture="p" />
+It's W's turn
+TURNS: 68 TWOC: 0 SEEN: 1
+LOST: W [pNppBQp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |BQ|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |  |  |Wp|  |
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|WN|WK|  |  |WR|
+---------------------------
+Moving: <move start="g3" end="g4" />
+It's B's turn
+TURNS: 69 TWOC: 1 SEEN: 1
+LOST: W [pNppBQp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |Bp|
+---------------------------
+ 4|Bp|  |  |BQ|  |Wp|Wp|Wp|
+---------------------------
+ 3|WB|  |  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|WN|WK|  |  |WR|
+---------------------------
+Moving: <move start="h5" end="g4" capture="p" />
+It's W's turn
+TURNS: 70 TWOC: 0 SEEN: 1
+LOST: W [pNppBQpp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |Wp|Bp|Wp|
+---------------------------
+ 3|WB|  |  |  |  |  |  |  |
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|WN|WK|  |  |WR|
+---------------------------
+Moving: <move start="h1" end="h3" />
+It's B's turn
+TURNS: 71 TWOC: 1 SEEN: 1
+LOST: W [pNppBQpp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |Wp|Bp|Wp|
+---------------------------
+ 3|WB|  |  |  |  |  |  |WR|
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|WN|WK|  |  |  |
+---------------------------
+Moving: <move start="g4" end="h3" capture="R" />
+It's W's turn
+TURNS: 72 TWOC: 0 SEEN: 1
+LOST: W [pNppBQppR] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |  |  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |Wp|  |Wp|
+---------------------------
+ 3|WB|  |  |  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|WN|WK|  |  |  |
+---------------------------
+Moving: <move start="f4" end="f5" />
+It's B's turn
+TURNS: 73 TWOC: 1 SEEN: 1
+LOST: W [pNppBQppR] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |Bp|Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Wp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|WB|  |  |  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|WN|WK|  |  |  |
+---------------------------
+Moving: <move start="e6" end="f5" capture="p" />
+It's W's turn
+TURNS: 74 TWOC: 0 SEEN: 1
+LOST: W [pNppBQppRp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|WB|  |  |  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|WN|WK|  |  |  |
+---------------------------
+Moving: <move start="d1" end="e3" />
+It's B's turn
+TURNS: 75 TWOC: 1 SEEN: 1
+LOST: W [pNppBQppRp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |BR|  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|WB|  |  |  |WN|  |  |Bp|
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|  |  |  |
+---------------------------
+Moving: <move start="e7" end="e3" capture="N" />
+It's W's turn
+TURNS: 76 TWOC: 0 SEEN: 1
+LOST: W [pNppBQppRpN] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|WB|  |  |  |BR|  |  |Bp|
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|  |  |  |
+---------------------------
+Moving: <move start="e1" end="f2" />
+It's B's turn
+TURNS: 77 TWOC: 1 SEEN: 1
+LOST: W [pNppBQppRpN] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|WB|  |  |  |BR|  |  |Bp|
+---------------------------
+ 2|  |  |  |BN|  |WK|  |  |
+---------------------------
+ 1|  |  |WR|  |  |  |  |  |
+---------------------------
+Moving: <move start="e3" end="a3" capture="B" />
+It's W's turn
+TURNS: 78 TWOC: 0 SEEN: 1
+LOST: W [pNppBQppRpNB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |BN|  |WK|  |  |
+---------------------------
+ 1|  |  |WR|  |  |  |  |  |
+---------------------------
+Moving: <move start="f2" end="e1" />
+It's B's turn
+TURNS: 79 TWOC: 1 SEEN: 1
+LOST: W [pNppBQppRpNB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|BR|  |  |  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |BN|  |  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|  |  |  |
+---------------------------
+Moving: <move start="d2" end="b3" />
+It's W's turn
+TURNS: 80 TWOC: 2 SEEN: 1
+LOST: W [pNppBQppRpNB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|BR|BN|  |  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|  |  |WR|  |WK|  |  |  |
+---------------------------
+Moving: <move start="c1" end="c3" />
+It's B's turn
+TURNS: 81 TWOC: 3 SEEN: 1
+LOST: W [pNppBQppRpNB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |BQ|  |  |  |Wp|
+---------------------------
+ 3|BR|BN|WR|  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|  |  |  |  |WK|  |  |  |
+---------------------------
+Moving: <move start="d4" end="d2" />
+It's W's turn
+TURNS: 82 TWOC: 4 SEEN: 1
+LOST: W [pNppBQppRpNB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |  |  |  |  |Wp|
+---------------------------
+ 3|BR|BN|WR|  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |BQ|  |  |  |  |
+---------------------------
+ 1|  |  |  |  |WK|  |  |  |
+---------------------------
+Moving: <move start="e1" end="f1" />
+It's B's turn
+TURNS: 83 TWOC: 5 SEEN: 1
+LOST: W [pNppBQppRpNB] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |  |  |  |  |Wp|
+---------------------------
+ 3|BR|BN|WR|  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |BQ|  |  |  |  |
+---------------------------
+ 1|  |  |  |  |  |WK|  |  |
+---------------------------
+Moving: <move start="d2" end="c3" capture="R" />
+It's W's turn
+TURNS: 84 TWOC: 0 SEEN: 1
+LOST: W [pNppBQppRpNBR] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |  |  |  |  |Wp|
+---------------------------
+ 3|BR|BN|BQ|  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|  |  |  |  |  |WK|  |  |
+---------------------------
+Moving: <move start="h4" end="h5" />
+It's B's turn
+TURNS: 85 TWOC: 1 SEEN: 1
+LOST: W [pNppBQppRpNBR] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |Wp|Bp|  |Bp|  |Wp|
+---------------------------
+ 4|Bp|  |  |  |  |  |  |  |
+---------------------------
+ 3|BR|BN|BQ|  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|  |  |  |  |  |WK|  |  |
+---------------------------
+Moving: <move start="b3" end="c5" capture="p" />
+It's W's turn
+TURNS: 86 TWOC: 0 SEEN: 1
+LOST: W [pNppBQppRpNBRp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |  |
+---------------------------
+ 5|BR|  |BN|Bp|  |Bp|  |Wp|
+---------------------------
+ 4|Bp|  |  |  |  |  |  |  |
+---------------------------
+ 3|BR|  |BQ|  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|  |  |  |  |  |WK|  |  |
+---------------------------
+Moving: <move start="h5" end="h6" />
+It's B's turn
+TURNS: 87 TWOC: 1 SEEN: 1
+LOST: W [pNppBQppRpNBRp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
+---------------------------
+ 7|  |  |  |  |  |  |Bp|  |
+---------------------------
+ 6|  |  |Bp|  |  |Bp|  |Wp|
+---------------------------
+ 5|BR|  |BN|Bp|  |Bp|  |  |
+---------------------------
+ 4|Bp|  |  |  |  |  |  |  |
+---------------------------
+ 3|BR|  |BQ|  |  |  |  |Bp|
+---------------------------
+ 2|  |  |  |  |  |  |  |  |
+---------------------------
+ 1|  |  |  |  |  |WK|  |  |
+---------------------------
+Moving: <move start="g7" end="h6" capture="p" />
+It's W's turn
+TURNS: 88 TWOC: 0 SEEN: 1
+LOST: W [pNppBQppRpNBRpp] B [pB]
+  | a| b| c| d| e| f| g| h|
+---------------------------
+ 8|  |BN|BB|  |BK|  |  |  |
 ---------------------------
  7|  |  |  |  |  |  |  |  |
 ---------------------------
- 6|  |WR|Bp|  |  |  |  |  |
+ 6|  |  |Bp|  |  |Bp|  |Bp|
 ---------------------------
- 5|WQ|  |  |Bp|  |Bp|  |BK|
+ 5|BR|  |BN|Bp|  |Bp|  |  |
 ---------------------------
- 4|  |Wp|  |Wp|  |Wp|  |  |
+ 4|Bp|  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|  |  |  |BR|Wp|  |Wp|
+ 3|BR|  |BQ|  |  |  |  |Bp|
 ---------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
+ 2|  |  |  |  |  |  |  |  |
 ---------------------------
- 1|  |  |WB|  |WK|WB|  |  |
+ 1|  |  |  |  |  |WK|  |  |
 ---------------------------
-Moving: <move start="e3" end="e7" />
-It's W's turn
-TURNS: 90 TWOC: 4 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNpp]
-  | a| b| c| d| e| f| g| h|
----------------------------
- 8|  |  |  |  |  |  |  |  |
----------------------------
- 7|  |  |  |  |BR|  |  |  |
----------------------------
- 6|  |WR|Bp|  |  |  |  |  |
----------------------------
- 5|WQ|  |  |Bp|  |Bp|  |BK|
----------------------------
- 4|  |Wp|  |Wp|  |Wp|  |  |
----------------------------
- 3|Wp|  |  |  |  |Wp|  |Wp|
----------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
----------------------------
- 1|  |  |WB|  |WK|WB|  |  |
----------------------------
-Moving: <move start="e1" end="d1" />
+Moving: <move start="f1" end="g1" />
 It's B's turn
-TURNS: 91 TWOC: 5 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNpp]
+TURNS: 89 TWOC: 1 SEEN: 1
+LOST: W [pNppBQppRpNBRpp] B [pB]
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |  |  |
+ 8|  |BN|BB|  |BK|  |  |  |
 ---------------------------
- 7|  |  |  |  |BR|  |  |  |
+ 7|  |  |  |  |  |  |  |  |
 ---------------------------
- 6|  |WR|Bp|  |  |  |  |  |
+ 6|  |  |Bp|  |  |Bp|  |Bp|
 ---------------------------
- 5|WQ|  |  |Bp|  |Bp|  |BK|
+ 5|BR|  |BN|Bp|  |Bp|  |  |
 ---------------------------
- 4|  |Wp|  |Wp|  |Wp|  |  |
+ 4|Bp|  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|  |  |  |  |Wp|  |Wp|
+ 3|BR|  |BQ|  |  |  |  |Bp|
 ---------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
+ 2|  |  |  |  |  |  |  |  |
 ---------------------------
- 1|  |  |WB|WK|  |WB|  |  |
+ 1|  |  |  |  |  |  |WK|  |
 ---------------------------
-Moving: <move start="h5" end="h4" />
+Moving: <move start="c3" end="e1" />
 It's W's turn
-TURNS: 92 TWOC: 6 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNpp]
+TURNS: 90 TWOC: 2 SEEN: 1
+LOST: W [pNppBQppRpNBRpp] B [pB]
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |  |  |
+ 8|  |BN|BB|  |BK|  |  |  |
 ---------------------------
- 7|  |  |  |  |BR|  |  |  |
+ 7|  |  |  |  |  |  |  |  |
 ---------------------------
- 6|  |WR|Bp|  |  |  |  |  |
+ 6|  |  |Bp|  |  |Bp|  |Bp|
 ---------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
+ 5|BR|  |BN|Bp|  |Bp|  |  |
 ---------------------------
- 4|  |Wp|  |Wp|  |Wp|  |BK|
+ 4|Bp|  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|  |  |  |  |Wp|  |Wp|
+ 3|BR|  |  |  |  |  |  |Bp|
 ---------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
+ 2|  |  |  |  |  |  |  |  |
 ---------------------------
- 1|  |  |WB|WK|  |WB|  |  |
+ 1|  |  |  |  |BQ|  |WK|  |
 ---------------------------
-Moving: <move start="b6" end="c6" capture="p" />
+Moving: <move start="g1" end="f2" />
 It's B's turn
-TURNS: 93 TWOC: 0 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNppp]
+TURNS: 91 TWOC: 3 SEEN: 1
+LOST: W [pNppBQppRpNBRpp] B [pB]
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |  |  |
+ 8|  |BN|BB|  |BK|  |  |  |
 ---------------------------
- 7|  |  |  |  |BR|  |  |  |
+ 7|  |  |  |  |  |  |  |  |
 ---------------------------
- 6|  |  |WR|  |  |  |  |  |
+ 6|  |  |Bp|  |  |Bp|  |Bp|
 ---------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
+ 5|BR|  |BN|Bp|  |Bp|  |  |
 ---------------------------
- 4|  |Wp|  |Wp|  |Wp|  |BK|
+ 4|Bp|  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|  |  |  |  |Wp|  |Wp|
+ 3|BR|  |  |  |  |  |  |Bp|
 ---------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
+ 2|  |  |  |  |  |WK|  |  |
 ---------------------------
- 1|  |  |WB|WK|  |WB|  |  |
+ 1|  |  |  |  |BQ|  |  |  |
 ---------------------------
 
-TURNS: 93 TWOC: 0 SEEN: 1
-LOST: W [Np] B [ppBNQRpBNppp]
+TURNS: 91 TWOC: 3 SEEN: 1
+LOST: W [pNppBQppRpNBRpp] B [pB]
   | a| b| c| d| e| f| g| h|
 ---------------------------
- 8|  |  |  |  |  |  |  |  |
+ 8|  |BN|BB|  |BK|  |  |  |
 ---------------------------
- 7|  |  |  |  |BR|  |  |  |
+ 7|  |  |  |  |  |  |  |  |
 ---------------------------
- 6|  |  |WR|  |  |  |  |  |
+ 6|  |  |Bp|  |  |Bp|  |Bp|
 ---------------------------
- 5|WQ|  |  |Bp|  |Bp|  |  |
+ 5|BR|  |BN|Bp|  |Bp|  |  |
 ---------------------------
- 4|  |Wp|  |Wp|  |Wp|  |BK|
+ 4|Bp|  |  |  |  |  |  |  |
 ---------------------------
- 3|Wp|  |  |  |  |Wp|  |Wp|
+ 3|BR|  |  |  |  |  |  |Bp|
 ---------------------------
- 2|WR|  |Wp|  |WN|  |  |  |
+ 2|  |  |  |  |  |WK|  |  |
 ---------------------------
- 1|  |  |WB|WK|  |WB|  |  |
+ 1|  |  |  |  |BQ|  |  |  |
 ---------------------------
-W won!
+B won!
 
 [Event ""]
 [Game "Chess"]
 [White "W"]
 [Black "B"]
-[Result "1-0"]
+[Result "0-1"]
 
-1.g2g3 g7g6
-2.e2e3 Bf8g7
-3.Ng1f3 h7h6
-4.Nf3e5 f7f6
-5.Ne5xg6 Rh8h7
-6.h2h3 e7e6
-7.Ke1e2 a7a6
-8.a2a3 f6f5
-9.Rh1g1 Ng8f6
-10.f2f3 Nf6g8
-11.Ke2d3 d7d6
-12.Ng6f4 e6e5
-13.Kd3e2 e5xf4
-14.g3xf4 h6h5
-15.Ra1a2 h5h4
-16.Ke2d3 c7c6
-17.Rg1g2 b7b6
-18.Nb1c3 Rh7h8
-19.Rg2xg7 Bc8d7
-20.Kd3e2 Ng8e7
-21.Ke2e1 Ne7g8
-22.d2d3 Rh8h6
-23.Rg7xg8 Ke8f7
-24.Rg8xd8 Rh6h8
-25.Rd8xh8 b6b5
-26.Rh8xh4 Ra8a7
-27.Rh4h8 Bd7c8
-28.Rh8xc8 Kf7e6
-29.Rc8xb8 Ra7e7
-30.Nc3e2 Re7a7
-31.Rb8g8 Ra7d7
-32.Rg8h8 d6d5
-33.Ke1f2 Ke6f7
-34.b2b3 Rd7a7
-35.d3d4 Kf7g7
-36.Rh8d8 a6a5
-37.Qd1d2 Kg7h6
-38.Rd8b8 Ra7h7
-39.Qd2xa5 b5b4
-40.Rb8xb4 Rh7h8
-41.Ra2a1 Rh8g8
-42.Kf2e1 Rg8e8
-43.Ra1a2 Re8xe3
-44.Rb4b6 Kh6h5
-45.b3b4 Re3e7
-46.Ke1d1 Kh5h4
-47.Rb6xc6 
+1.Ng1f3 Ng8h6
+2.c2c3 h7h5
+3.g2g3 a7a6
+4.d2d3 b7b5
+5.Nf3e5 Ra8a7
+6.b2b3 f7f6
+7.Ne5g6 Rh8g8
+8.b3b4 c7c6
+9.Bc1a3 Nh6f7
+10.f2f4 a6a5
+11.b4xa5 Ra7xa5
+12.Ng6xf8 Rg8xf8
+13.a2a4 b5xa4
+14.e2e3 e7e6
+15.h2h4 Nb8a6
+16.Ke1e2 Nf7h6
+17.Ke2e1 Na6b8
+18.Qd1d2 Ra5a7
+19.Ra1a2 Qd8e7
+20.Rh1g1 Rf8f7
+21.c3c4 Qe7d8
+22.d3d4 Ra7a8
+23.Qd2e2 Qd8e7
+24.c4c5 d7d5
+25.Ra2c2 Qe7d7
+26.Rg1h1 Nh6g4
+27.Nb1c3 Ra8a5
+28.Rc2c1 Rf7e7
+29.Rc1c2 Qd7b7
+30.Rc2c1 Qb7b4
+31.Qe2d2 Ng4xe3
+32.Ke1f2 Ne3xf1
+33.Kf2e1 Nf1xd2
+34.Nc3d1 Qb4xd4
+35.g3g4 h5xg4
+36.Rh1h3 g4xh3
+37.f4f5 e6xf5
+38.Nd1e3 Re7xe3
+39.Ke1f2 Re3xa3
+40.Kf2e1 Nd2b3
+41.Rc1c3 Qd4d2
+42.Ke1f1 Qd2xc3
+43.h4h5 Nb3xc5
+44.h5h6 g7xh6
+45.Kf1g1 Qc3e1
+46.Kg1f2 
 

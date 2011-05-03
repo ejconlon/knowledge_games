@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import base
+import copy
 import parse
 import random
 
@@ -81,8 +82,8 @@ class StalemateException(base.WinnerException): pass
 class MatedException(base.WinnerException): pass
 
 log = base.LogWrapper("chess")
-th = base.logging.FileHandler('/tmp/chess.log')
-log.wrap.addHandler(th)
+#th = base.logging.FileHandler('/tmp/chess.log')
+#log.wrap.addHandler(th)
 log.wrap.setLevel(base.logging.DEBUG)
 log.enabled = False
 
@@ -773,7 +774,7 @@ class ChessBoard(base.Board):
         core = ChessBoard._filter_promotions(
                     board.valid_moves_init(color))
         #core = ChessBoard._filter_not_stalemates(depth, color, board, core)
-        if depth < 2:
+        if depth < 1:
             core = ChessBoard._filter_not_puts_in_check(depth, color, board, core)
         return core
 
@@ -784,7 +785,7 @@ class ChessBoard(base.Board):
         log.info(move, who)
         board = self.copy()
         board.turns += 1
-        moving_piece = board.grid.get_start(move)
+        moving_piece = copy.deepcopy(board.grid.get_start(move))
         target_piece = board.grid.get_end(move)
         # pick up the piece
         board.grid = board.grid.set_start(move, None)

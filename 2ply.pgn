@@ -52,3 +52,56 @@
 46.Ke1d1 Kh5h4
 47.Rb6xc6 
 
+[Event ""]
+[Game "Chess"]
+[White "W"]
+[Black "B"]
+[Result "0-1"]
+
+1.Ng1f3 Ng8h6
+2.c2c3 h7h5
+3.g2g3 a7a6
+4.d2d3 b7b5
+5.Nf3e5 Ra8a7
+6.b2b3 f7f6
+7.Ne5g6 Rh8g8
+8.b3b4 c7c6
+9.Bc1a3 Nh6f7
+10.f2f4 a6a5
+11.b4xa5 Ra7xa5
+12.Ng6xf8 Rg8xf8
+13.a2a4 b5xa4
+14.e2e3 e7e6
+15.h2h4 Nb8a6
+16.Ke1e2 Nf7h6
+17.Ke2e1 Na6b8
+18.Qd1d2 Ra5a7
+19.Ra1a2 Qd8e7
+20.Rh1g1 Rf8f7
+21.c3c4 Qe7d8
+22.d3d4 Ra7a8
+23.Qd2e2 Qd8e7
+24.c4c5 d7d5
+25.Ra2c2 Qe7d7
+26.Rg1h1 Nh6g4
+27.Nb1c3 Ra8a5
+28.Rc2c1 Rf7e7
+29.Rc1c2 Qd7b7
+30.Rc2c1 Qb7b4
+31.Qe2d2 Ng4xe3
+32.Ke1f2 Ne3xf1
+33.Kf2e1 Nf1xd2
+34.Nc3d1 Qb4xd4
+35.g3g4 h5xg4
+36.Rh1h3 g4xh3
+37.f4f5 e6xf5
+38.Nd1e3 Re7xe3
+39.Ke1f2 Re3xa3
+40.Kf2e1 Nd2b3
+41.Rc1c3 Qd4d2
+42.Ke1f1 Qd2xc3
+43.h4h5 Nb3xc5
+44.h5h6 g7xh6
+45.Kf1g1 Qc3e1
+46.Kg1f2 
+

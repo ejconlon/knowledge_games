@@ -4,8 +4,8 @@ import base
 import parse
 
 log = base.LogWrapper("ttt")
-th = base.logging.FileHandler('/tmp/chess.log')
-log.wrap.addHandler(th)
+#th = base.logging.FileHandler('/tmp/chess.log')
+#log.wrap.addHandler(th)
 log.wrap.setLevel(base.logging.DEBUG)
 log.enabled = False
 
@@ -180,7 +180,8 @@ if __name__ == "__main__":
         f = open(fn, "a")
 
     for i in xrange(n):
-        agents = [base.MinMaxSearchAgent("X", "O", TTTHeuristic(), 2), RandomAgent("O")]
+        agents = [base.HeuristicAgent("X", TTTHeuristic()), RandomAgent("O")]
+        #agents = [base.MinMaxSearchAgent("X", "O", TTTHeuristic(), 2), RandomAgent("O")]
         #agents = [base.MinMaxSearchAgent("X", "O", TTTHeuristic(), 2), base.HeuristicAgent("O", TTTHeuristic())]
         final_board, moves, winner = base.play(agents, TTTBoard.empty())
         print moves
