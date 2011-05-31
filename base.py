@@ -142,6 +142,45 @@ class MinMaxSearchAgent(HeuristicAgent):
                 max_move = move
         return max_move, max_hval
 
+class MinMaxAlphaBetaAgent(MinMaxSearchAgent):
+    def __init__(self, name, other_name, heuristic, max_depth=-1):
+        MinMaxSearchAgent.__init__(self, name, other_name, heuristic, max_depth)
+
+    def _get_move_sub(self, who, other, board, depth, max_depth, heuristic, alpha=None, beta=None):
+        if alpha is None:
+            alpha = HVal.neg_inf()
+        if beta is None:
+            beta = HVal.pos_inf()
+        max_hval = None
+        max_move = None
+        for move in self._valid_moves(who, board):
+            result = board.result(who, move)
+            hval = None
+
+            if result.who_won() is not None:
+                if result.who_won() == who:
+                    hval = HVal.pos_inf()
+                else:
+                    hval = HVal.neg_inf()
+            elif max_depth < 0 or depth < max_depth:
+                min_move, min_hval = self._get_move_sub(other, who, result, depth+1, max_depth, heuristic, -beta, -alpha)
+                hval = - min_hval
+                alpha = max(alpha, hval)
+                if alpha >= beta:
+                    if max_hval is None or hval > max_hval:
+                        max_hval = hval
+                        max_move = move
+                    break
+                    
+            else:
+                hval = heuristic.evaluate(who, result)
+
+            if max_hval is None or hval > max_hval:
+                max_hval = hval
+                max_move = move
+        return max_move, max_hval
+
+
 class WinnerException(Exception):
     def __init__(self, winner, move=None):
         Exception.__init__(self, "Winner: "+str(winner)+" Move: "+str(move))

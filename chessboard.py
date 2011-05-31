@@ -831,8 +831,6 @@ class ChessRandomAgent(base.Agent):
 class ChessHeuristic(base.Heuristic):
     def evaluate(self, who, board):
         other = ChessConstants.BLACK if who == ChessConstants.WHITE else ChessConstants.WHITE
-        #if ChessBoard._is_stalemated(0, who, board):
-        #    return base.HVal(0)
         if ChessBoard._is_mated(0, who, board):
             return base.HVal.neg_inf()
         if ChessBoard._is_mated(0, other, board):
@@ -843,9 +841,32 @@ class ChessHeuristic(base.Heuristic):
         their_val = sum((ChessConstants.VALUE[piece.abbr] for piece, row, col in board.grid.get_piece_tuples(other)))
         return base.HVal(our_val - their_val)
 
+class AnotherChessHeuristic(base.Heuristic):
+    def evaluate(self, who, board):
+        other = ChessConstants.BLACK if who == ChessConstants.WHITE else ChessConstants.WHITE
+        if ChessBoard._is_mated(0, who, board):
+            return base.HVal.neg_inf()
+        if ChessBoard._is_mated(0, other, board):
+            return base.HVal.pos_inf()
+
+        # count the value of our pieces vs the value of theirs
+        our_val = sum((ChessConstants.VALUE[piece.abbr] for piece, row, col in board.grid.get_piece_tuples(who)))
+        their_val = sum((ChessConstants.VALUE[piece.abbr] for piece, row, col in board.grid.get_piece_tuples(other)))
+        # CHANGE: AVERAGE
+        return base.HVal((2*our_val - their_val)/3.)
+
+
 class ChessMinMaxSearchAgent(base.MinMaxSearchAgent):
     def __init__(self, name, other_name, heuristic, max_depth=-1):
         base.MinMaxSearchAgent.__init__(self, name, other_name, heuristic, max_depth)
+    def _valid_moves(self, who, board):
+        l = list(board.valid_moves(who))
+        random.shuffle(l)
+        return l
+
+class ChessMinMaxAlphaBetaAgent(base.MinMaxAlphaBetaAgent):
+    def __init__(self, name, other_name, heuristic, max_depth=-1):
+        base.MinMaxAlphaBetaAgent.__init__(self, name, other_name, heuristic, max_depth)
     def _valid_moves(self, who, board):
         l = list(board.valid_moves(who))
         random.shuffle(l)
@@ -905,7 +926,10 @@ def main(args):
         #agents = [ChessRandomAgent(color) for color in ChessConstants.COLORS]
         #agents = [base.HeuristicAgent(ChessConstants.WHITE, ChessHeuristic()), ChessRandomAgent(ChessConstants.BLACK)]
         #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2), ChessRandomAgent(ChessConstants.BLACK)]
-        agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=ChessHeuristic(), max_depth=2)]
+        #agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=ChessHeuristic(), max_depth=2)]
+        #agents = [ChessMinMaxAlphaBetaAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),ChessRandomAgent(ChessConstants.BLACK)]
+        agents = [ChessMinMaxSearchAgent(ChessConstants.WHITE, ChessConstants.BLACK, heuristic=ChessHeuristic(), max_depth=2),
+                  ChessMinMaxSearchAgent(ChessConstants.BLACK, ChessConstants.WHITE, heuristic=AnotherChessHeuristic(), max_depth=2)]
 
         final_board, moves, winner = base.play(agents, board)
         pgn = parse.write_game("Chess", agents, moves, winner)

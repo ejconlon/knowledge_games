@@ -1,0 +1,99 @@
+Eric Conlon
+CMPS 241 Spring 11
+Chess Journal 4
+5/30/2011
+
+THIS FILE IS AVAILABLE AT
+https://github.com/ejconlon/knowledge_games/raw/master/journal4.txt
+
+For this final chess journal I'd like to detail my final practice efforts
+and my progress toward meeting the (admittedly low) target I set for myself,
+as well as make some final comments about my chess engine.
+
+PRACTICE
+--------
+
+I played a lot of games with Shredder this week, hovering around 950 for 
+a rating at which I can comfortably win in Blitz.  I've worked a lot on 
+my pacing, since one has to move once every ten seconds or so.  Most of 
+my improvement has been in taking my time to develop a good pawn structure 
+and developed back rank with unblocked bishops and focus on early castling. 
+Only then do I worry about trying to poke holes in the opponent's lines.
+
+I played a few very good long-form games face-to-face with a friend as well.  One we
+spent about two hours on, and we both played excellently.  We had excellent defensive 
+lines and were protected (sometimes doubly) everywhere.  Play reached a point at which 
+neither of us wanted to be the first to pop the ballon, as it were, since the first to
+do so would be down material.  I had picked up "The Complete Book of Chess Strategy" by
+"IM" Jeremy Silman, and remembered reading one interesting section titled "Cat and Mouse":
+
+"Before making use of your big breakthrough or big plan, slowly make your position as perfect
+as possible.  Tighten up your pawns, improve the position of your King, place your pieces on 
+their best possible squares. ... If he can only sit around and watch you do whatever it is 
+you wish to do, why not set up a dream position before going for his jugular?" (Silman p.287)
+
+This is exactly what I did - shifting around supporting pieces behind the lines to get them
+in just the right places for the one push I had in mind.  Finally, I pushed up and sacrificed 
+a non-essential pawn to start the chain reaction, and I was able to pick off bits and pieces of 
+his defenses from there.  It was a long slow decline for him.
+
+I tried to learn a few openings and I wrote about them last journal, but since I haven't practiced
+them much, they're fading away in my memory.  The trouble is that it's hard to practice specific 
+openings against someone else (human or computer) because one unexpected move is enough to push you 
+into a variation that you may not be familiar with, and that could be played very differently.  It 
+was with great joy that I started playing a bit of Chess 960, which seems to render "Chess Theory" 
+moot.  I'm very, very bad at it now, but I have picked up a few things:
+
+- If a Queen or Bishop is in a1/h8/etc. watch the diagonal: open it for a pin or close it against one.
+- If there are a pair of Bishops on one side of the board, castle opposite.
+- Castling puts you in the same position as regular Chess!  This makes it much more powerful...
+
+The final point was very confusing for me at first, as you could have R-K-R on f1-g1-h1 and end up 
+with K-R on c1-d1!  This is a very dramatic shift that could really throw off the opponent's attack,
+if you're able to do it while protected enough to not castle through check. (Would the entire row 
+have to be protected? I am still confused on this.)  In any case, Chess 960 is refreshing and fun,
+and I don't feel like I have to stand the tyranny of opening books!
+
+CHESS ENGINE
+------------
+
+Post-mortem, I would say that my engine is too slow to be useful.  The stack is too deep, the heap 
+is too high, and the language doesn't provide the right tools for the job.  From a software engineering 
+perspective, I could have used better control over memory (shared buffers, manual memory management), 
+or less control (persistent/purely functional). I also would have composed a few of my core functions 
+differently, specifically legal move determination.  I wanted to try to implement some sort of graph-
+based heuristic (attaching a weight to protected/unprotected pieces, etc - similar to the "Experience-
+Based Creativity" paper), but my core legal move functions discarded as impossible moves ones that 
+were obviously not viable in the next turn (e.g. moving "into" one of your own pieces).  I think it 
+would be fruitful to start searching from that graph representation because it would tend to present
+proper move orderings so Alpha-Beta pruning would be effective. I ended up randomizing the order of 
+moves just to break ties, but it would have been better to either post-process the moves or generate
+them in the right order (but that's easier said than done).  In the end, I can only stand to sit and
+watch my engine play 2-ply deep, which isn't enough to get any sort of coordination between pieces, and
+so it is pretty much a greedy, stupid, ineffective player.
+
+Finally, summing the points of pieces on the board is a wholly inadequate heuristic.  It leads to 
+play that is too greedy and doesn't focus on positional strength.  Even weighting the value of one
+side's own pieces higher than the other side's doesn't help enough (though it would seem to cut down 
+on purely offensive and/or trading plays).  Clearly, some sort of intermediate representation like
+the graph representation would at least let the engine pluck out salient factors of a position.  In fact,
+this would be more than a semester's work in itself -- what are the quantifiable "features" of a position?
+They might include:
+
+- Difference in unprotected material values
+- Max/min in/out degree of any vertex (meaning most/least protected pieces)
+- Longest chain of protection (we would have to work with a multi-graph representation here to account 
+    for protection post-move)
+- Max/min distance to opponents King (in whatever distance metric applies to the edges - number of moves, etc.)
+- Max/min distance to own King
+- Subgraph features on node removal (am I seeing a position with two distinct areas of attack? does my graph 
+    split when I remove a vertex?)
+
+How can I assign weights to these features a priori?  The TD approach in the EBC paper makes a lot of
+sense from a Bayesian perspective (use what you believe, then update it), but the engine loses its 
+statelessness.  It would be interesting to learn that set of weights in a Morph-type system and use them 
+to augment a stateless (opening book aside), purely search-based engine. If only I would have read 
+that paper sooner!
+
+
+
