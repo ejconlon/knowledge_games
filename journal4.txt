@@ -72,7 +72,7 @@ them in the right order (but that's easier said than done).  In the end, I can o
 watch my engine play 2-ply deep, which isn't enough to get any sort of coordination between pieces, and
 so it is pretty much a greedy, stupid, ineffective player.
 
-Finally, summing the points of pieces on the board is a wholly inadequate heuristic.  It leads to 
+Also, summing the points of pieces on the board is a wholly inadequate heuristic.  It leads to 
 play that is too greedy and doesn't focus on positional strength.  Even weighting the value of one
 side's own pieces higher than the other side's doesn't help enough (though it would seem to cut down 
 on purely offensive and/or trading plays).  Clearly, some sort of intermediate representation like
@@ -95,5 +95,7 @@ statelessness.  It would be interesting to learn that set of weights in a Morph-
 to augment a stateless (opening book aside), purely search-based engine. If only I would have read 
 that paper sooner!
 
-
+Finally, I'm please to say that even simple 1-ply heuristic evaluation is a little better than choosing random
+moves several plies deeper (an interesting no-knowledge strategy we discussed in class).  Some knowledge 
+was gained.
 
